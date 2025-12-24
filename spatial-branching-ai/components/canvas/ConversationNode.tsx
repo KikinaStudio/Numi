@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, BookOpen } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -193,14 +193,11 @@ function ConversationNodeComponent(props: NodeProps) {
             </div>
 
             {nodeData.branchContext && (
-                <div className="px-4 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-start gap-2 group transition-colors hover:bg-blue-500/10">
-                    <BookOpen className="h-4 w-4 text-blue-400 mt-1 shrink-0" />
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-blue-500/50">Context</span>
-                        <p className="text-[15px] text-foreground leading-relaxed font-medium">
-                            {nodeData.branchContext}
-                        </p>
-                    </div>
+                <div className="px-4 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-3 group transition-colors hover:bg-blue-500/10">
+                    <Scissors className="h-4 w-4 text-blue-500 shrink-0" />
+                    <p className="text-[15px] text-foreground leading-relaxed font-medium">
+                        {nodeData.branchContext}
+                    </p>
                 </div>
             )}
 
@@ -245,15 +242,17 @@ function ConversationNodeComponent(props: NodeProps) {
                             >
                                 {(() => {
                                     let content = nodeData.content;
-                                    const branchedTexts = (nodeData as any).branchedTexts || [];
+                                    const branchedTexts = ((nodeData as any).branchedTexts as string[]) || [];
 
                                     // Sort by length descending to avoid partial matches
-                                    const sortedBranches = [...branchedTexts].sort((a, b) => b.length - a.length);
+                                    const sortedBranches = [...new Set(branchedTexts)].sort((a, b) => b.length - a.length);
 
                                     sortedBranches.forEach(branch => {
-                                        // Escaping regex but keeping it simple for now as branchContext is usually clean text
+                                        if (!branch || typeof branch !== 'string' || !branch.trim()) return;
+                                        // Escaping regex special characters
                                         const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                        const regex = new RegExp(`(${escaped})`, 'g');
+                                        // Use 'gi' flags for global and case-insensitive matching
+                                        const regex = new RegExp(`(${escaped})`, 'gi');
                                         content = content.replace(regex, '<mark class="branched-highlight">$1</mark>');
                                     });
                                     return content;
