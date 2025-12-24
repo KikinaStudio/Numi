@@ -168,7 +168,11 @@ function ConversationNodeComponent(props: NodeProps) {
                     )}
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
-                    {isUser ? 'You' : 'Assistant'}
+                    {isUser ? 'You' : (
+                        nodeData.selectedPersonaId
+                            ? PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Assistant'
+                            : 'Assistant'
+                    )}
                 </span>
                 {nodeData.isGenerating && (
                     <Sparkles className="h-4 w-4 text-yellow-500 animate-spin ml-auto" />

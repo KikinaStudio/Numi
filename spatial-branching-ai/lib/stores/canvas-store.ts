@@ -270,6 +270,7 @@ export const useCanvasStore = create<CanvasState>()(
                     content: '',
                     branchContext,
                     isGenerating: role === 'assistant',
+                    selectedPersonaId: parent?.data.selectedPersonaId,
                 },
             };
 
