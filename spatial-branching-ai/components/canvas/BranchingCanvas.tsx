@@ -247,6 +247,12 @@ function Canvas() {
                         <Input
                             value={treeName}
                             onChange={(e) => setTreeName(e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                }
+                            }}
                             className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium"
                             placeholder="Conversation Title"
                         />
