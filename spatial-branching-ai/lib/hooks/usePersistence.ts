@@ -71,7 +71,8 @@ export function usePersistence() {
 
     const saveTree = useCallback(async () => {
         if (!supabase) {
-            setSyncStatus('error');
+            console.error('Supabase client not initialized - Missing Env Vars?');
+            setSyncStatus('error', 'Missing Supabase Configuration (NEXT_PUBLIC_SUPABASE_URL)');
             return;
         }
 
@@ -193,7 +194,7 @@ export function usePersistence() {
         } catch (error: any) {
             console.error('Save failed:', error.message || error);
             if (error.details) console.error('Error details:', error.details);
-            setSyncStatus('error');
+            setSyncStatus('error', error.message || 'Unknown save error');
         } finally {
             isSavingRef.current = false;
         }
@@ -250,9 +251,9 @@ export function usePersistence() {
             // 5. Load into Store
             loadGraph(flowNodes, flowEdges, tree.id, tree.name);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to load tree:', error);
-            setSyncStatus('error');
+            setSyncStatus('error', `Load failed: ${error.message || 'Unknown error'}`);
         }
     }, [loadGraph, setSyncStatus]);
 

@@ -57,6 +57,7 @@ function Canvas() {
         contextMenu,
         setContextMenu,
         syncStatus,
+        syncError,
         collaborators,
         treeId,
     } = useCanvasStore();
@@ -253,7 +254,11 @@ function Canvas() {
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
                         {syncStatus === 'saving' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                         {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
-                        {syncStatus === 'error' && <AlertCircle className="h-4 w-4 text-destructive" />}
+                        {syncStatus === 'error' && (
+                            <div title={syncError || 'Sync Error'}>
+                                <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+                            </div>
+                        )}
                         <span className="text-xs font-medium text-muted-foreground">
                             {syncStatus === 'saving' && 'Saving...'}
                             {syncStatus === 'synced' && 'Saved'}

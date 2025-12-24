@@ -58,6 +58,7 @@ interface CanvasState {
     treeId: string | null;
     treeName: string;
     syncStatus: 'synced' | 'saving' | 'error' | 'unsaved';
+    syncError: string | null;
 
     // Actions
     setNodes: (nodes: ConversationNode[]) => void;
@@ -83,7 +84,7 @@ interface CanvasState {
     // Persistence Actions
     setTreeId: (id: string | null) => void;
     setTreeName: (name: string) => void;
-    setSyncStatus: (status: CanvasState['syncStatus']) => void;
+    setSyncStatus: (status: CanvasState['syncStatus'], error?: string | null) => void;
     loadGraph: (nodes: ConversationNode[], edges: Edge[], treeId: string, treeName?: string) => void;
 
     // Branching
@@ -119,6 +120,7 @@ export const useCanvasStore = create<CanvasState>()(
         treeId: null,
         treeName: 'Untitled Conversation',
         syncStatus: 'synced',
+        syncError: null,
         collaborators: {},
 
         // Setters
@@ -128,13 +130,14 @@ export const useCanvasStore = create<CanvasState>()(
         // Persistence Actions
         setTreeId: (id) => set({ treeId: id }),
         setTreeName: (name) => set({ treeName: name }),
-        setSyncStatus: (status) => set({ syncStatus: status }),
+        setSyncStatus: (status, error = null) => set({ syncStatus: status, syncError: error }),
         loadGraph: (nodes, edges, treeId, treeName) => set({
             nodes,
             edges,
             treeId,
             treeName: treeName || 'Untitled Conversation',
-            syncStatus: 'synced'
+            syncStatus: 'synced',
+            syncError: null
         }),
 
         // React Flow change handlers (optimized)
