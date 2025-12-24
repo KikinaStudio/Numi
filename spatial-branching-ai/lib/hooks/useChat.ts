@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useCanvasStore } from '@/lib/stores/canvas-store';
 
 import { useSettingsStore, MODELS } from '@/lib/stores/settings-store';
+import { PERSONAS } from '@/lib/config/personas';
 
 interface UseChatOptions {
     model?: string;
@@ -44,12 +45,31 @@ export function useChat(options: UseChatOptions = {}) {
         const messages = getConversationContext(nodeId);
 
         // Filter out empty messages and ensure proper format
-        const validMessages = messages
+        let validMessages = messages
             .filter(m => m.content.trim().length > 0)
             .map(m => ({
                 role: m.role as 'user' | 'assistant' | 'system',
                 content: m.content,
             }));
+
+        // INJECT PERSONA SYSTEM PROMPT
+        // We look for the user node that triggered this generation (the parent of the current 'generating' node)
+        // Or deeper ancestors if needed. But typically, the style is decided by the prompt node.
+        const parentNode = getConversationContext(nodeId).length > 0 ? useCanvasStore.getState().nodes.find(n =>
+            // The prompt comes from the last USER message in the chain
+            n.id === useCanvasStore.getState().edges.find(e => e.target === nodeId)?.source
+        ) : null;
+
+        if (parentNode && parentNode.data.selectedPersonaId) {
+            const persona = PERSONAS.find(p => p.id === parentNode.data.selectedPersonaId);
+            if (persona && persona.id !== 'standard') {
+                // Prepend system prompt
+                validMessages = [
+                    { role: 'system', content: persona.systemPrompt },
+                    ...validMessages
+                ];
+            }
+        }
 
         if (validMessages.length === 0) {
             throw new Error('No valid messages in conversation context');

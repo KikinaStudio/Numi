@@ -22,6 +22,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
         model?: string;
         temperature?: number;
     };
+    selectedPersonaId?: string;
 }
 
 // Extended node type for our conversation nodes

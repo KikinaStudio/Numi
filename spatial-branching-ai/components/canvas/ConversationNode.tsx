@@ -5,9 +5,17 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, BookOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { PERSONAS } from '@/lib/config/personas';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 
 function ConversationNodeComponent(props: NodeProps) {
@@ -214,8 +222,27 @@ function ConversationNodeComponent(props: NodeProps) {
                 )}
 
                 {/* Generate Button for User Nodes */}
+                {/* Generate Button for User Nodes */}
                 {isUser && (isEditing || nodeData.content.trim().length > 0) && (
-                    <div className="absolute bottom-2 right-2 flex justify-end z-10 transition-opacity">
+                    <div className="absolute bottom-2 right-2 flex items-center gap-2 justify-end z-10 transition-opacity">
+                        <Select
+                            value={nodeData.selectedPersonaId || 'standard'}
+                            onValueChange={(value) => updateNode(id, { selectedPersonaId: value })}
+                        >
+                            <SelectTrigger className="h-7 w-[130px] text-xs bg-background/80 border-input shadow-none backdrop-blur-sm">
+                                <SelectValue placeholder="Agent" />
+                            </SelectTrigger>
+                            <SelectContent className='dark:bg-[#1a1a1a]'>
+                                {PERSONAS.map(persona => (
+                                    <SelectItem key={persona.id} value={persona.id} className="text-xs">
+                                        <span className="flex items-center gap-2">
+                                            <span>{persona.shortLabel}</span>
+                                        </span>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
                         <button
                             onMouseDown={(e) => e.preventDefault()} // Prevent blur
                             onClick={handleGenerate}
