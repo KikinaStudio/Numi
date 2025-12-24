@@ -5,11 +5,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSettingsStore, MODELS, ApiKeys } from '@/lib/stores/settings-store';
-import { Eye, EyeOff, Check, X, Settings } from 'lucide-react';
+import { Eye, EyeOff, Check, X, Settings, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-    const { apiKeys, setApiKey, defaultModel, setDefaultModel } = useSettingsStore();
+    const { apiKeys, setApiKey, defaultModel, setDefaultModel, theme, setTheme } = useSettingsStore();
 
     // Local state for masking
     const [showKey, setShowKey] = useState<Record<string, boolean>>({});
@@ -48,6 +48,31 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                         <p className="text-[0.8rem] text-muted-foreground">
                             The model used for generating new branches.
                         </p>
+                    </div>
+
+                    {/* Theme Selection */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Appearance</label>
+                        <div className="flex bg-muted p-1 rounded-lg w-fit gap-1">
+                            <Button
+                                variant={theme === 'light' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setTheme('light')}
+                                className={cn("h-8 px-3 gap-2", theme === 'light' && "shadow-sm bg-background")}
+                            >
+                                <Sun className="h-4 w-4" />
+                                Light
+                            </Button>
+                            <Button
+                                variant={theme === 'dark' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setTheme('dark')}
+                                className={cn("h-8 px-3 gap-2", theme === 'dark' && "shadow-sm bg-background")}
+                            >
+                                <Moon className="h-4 w-4" />
+                                Dark
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="border-t" />
