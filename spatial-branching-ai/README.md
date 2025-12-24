@@ -96,4 +96,4 @@ Key objectives include:
 
 ---
 
-*Built with passion by Antigravity*
+Built with passion by Antigravity
