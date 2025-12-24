@@ -11,6 +11,7 @@ export interface ApiKeys {
 export type PricingProvider = 'openai' | 'anthropic' | 'google' | 'openrouter';
 
 export const MODELS = [
+    { id: 'xiaomi/mimo-v2-flash:free', name: 'Xiaomi MiMo V2 (Free)', provider: 'openrouter' },
     { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'openai' },
     { id: 'openai/gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'openai' },
     { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic' },
@@ -34,7 +35,7 @@ export const useSettingsStore = create<SettingsState>()(
                 google: '',
                 openrouter: '',
             },
-            defaultModel: 'openai/gpt-4o',
+            defaultModel: 'xiaomi/mimo-v2-flash:free',
             setApiKey: (provider, key) =>
                 set((state) => ({
                     apiKeys: { ...state.apiKeys, [provider]: key },

@@ -178,8 +178,7 @@ function Canvas() {
                 onNodeContextMenu={onNodeContextMenu}
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
-                fitView
-                defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                 snapToGrid
                 snapGrid={[20, 20]}
                 minZoom={0.1}
@@ -246,7 +245,7 @@ function Canvas() {
                         <p className="text-sm text-muted-foreground">
                             <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Double-click</kbd> canvas to create •
                             <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Double-click</kbd> node to edit •
-                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Select text</kbd> to branch
+                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Right-click</kbd> to branch
                         </p>
                     </div>
                 </Panel>
@@ -290,16 +289,8 @@ function Canvas() {
                             variant="outline"
                             className="gap-2"
                             onClick={() => {
-                                if (reactFlowWrapper.current) {
-                                    const { width, height, left, top } = reactFlowWrapper.current.getBoundingClientRect();
-                                    const x = left + (width / 2);
-                                    const y = top + (height / 3); // Upper third
-                                    const pos = screenToFlowPosition({ x, y });
-                                    // Offset by half node width (approx 140px) so it's centered
-                                    createRootNode({ x: pos.x - 140, y: pos.y });
-                                } else {
-                                    createRootNode({ x: 0, y: 0 });
-                                }
+                                // Position in upper third (approximate coordinates)
+                                createRootNode({ x: 200, y: 100 });
                             }}
                         >
                             <Plus className="h-4 w-4" />
