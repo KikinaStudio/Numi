@@ -49,6 +49,7 @@ export function usePersistence() {
 
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
     const lastSavedRef = useRef<string>('');
+    const isSavingRef = useRef<boolean>(false);
 
     // Serialize current state to detect changes
     const serializeState = (nodes: ConversationNode[], edges: Edge[]) => {
@@ -71,13 +72,20 @@ export function usePersistence() {
             return;
         }
 
+        // Prevent parallel executions
+        if (isSavingRef.current) {
+            return;
+        }
+
         setSyncStatus('saving');
+        isSavingRef.current = true;
 
         try {
             const currentState = serializeState(nodes, edges);
             // If nothing changed since last save (and we aren't creating a new tree), skip
             if (treeId && currentState === lastSavedRef.current) {
                 setSyncStatus('synced');
+                isSavingRef.current = false;
                 return;
             }
 
@@ -135,11 +143,16 @@ export function usePersistence() {
             // Clean up deleted nodes
             const activeNodeIds = nodes.map(n => n.id);
             if (activeNodeIds.length > 0) {
-                await supabase
-                    .from('nodes')
-                    .delete()
-                    .eq('tree_id', currentTreeId)
-                    .not('id', 'in', activeNodeIds);
+                try {
+                    await supabase
+                        .from('nodes')
+                        .delete()
+                        .eq('tree_id', currentTreeId)
+                        .filter('id', 'not.in', `(${activeNodeIds.join(',')})`);
+                } catch (e) {
+                    // Ignore cleanup errors to prevent sync verification loop
+                    console.error('Cleanup deleted nodes failed (non-fatal):', e);
+                }
             }
 
             // 3. Upsert Edges
@@ -151,16 +164,24 @@ export function usePersistence() {
 
             if (deleteEdgesError) throw deleteEdgesError;
 
-            const edgesToInsert = edges.map(edge => ({
-                tree_id: currentTreeId,
-                source_id: edge.source,
-                target_id: edge.target
-            }));
+            // Deduplicate edges based on source/target to prevent unique constraint violations
+            const uniqueEdgesMap = new Map<string, any>();
+            edges.forEach(edge => {
+                const key = `${edge.source}-${edge.target}`;
+                if (!uniqueEdgesMap.has(key)) {
+                    uniqueEdgesMap.set(key, {
+                        tree_id: currentTreeId,
+                        source_id: edge.source,
+                        target_id: edge.target
+                    });
+                }
+            });
+            const edgesToInsert = Array.from(uniqueEdgesMap.values());
 
             if (edgesToInsert.length > 0) {
                 const { error: edgesError } = await supabase
                     .from('edges')
-                    .insert(edgesToInsert as any); // using any to bypass strict type check on missing id
+                    .upsert(edgesToInsert, { onConflict: 'source_id, target_id' });
                 if (edgesError) throw edgesError;
             }
 
@@ -170,8 +191,67 @@ export function usePersistence() {
             console.error('Save failed:', error.message || error);
             if (error.details) console.error('Error details:', error.details);
             setSyncStatus('error');
+        } finally {
+            isSavingRef.current = false;
         }
     }, [nodes, edges, treeId, treeName, setTreeId, setSyncStatus]);
+
+    const loadTree = useCallback(async (id: string) => {
+        if (!supabase) return;
+
+        try {
+            // 1. Fetch Tree Metadata
+            const { data: tree, error: treeError } = await supabase
+                .from('trees')
+                .select('*')
+                .eq('id', id)
+                .single();
+            if (treeError) throw treeError;
+
+            // 2. Fetch Nodes
+            const { data: dbNodes, error: nodesError } = await supabase
+                .from('nodes')
+                .select('*')
+                .eq('tree_id', id);
+            if (nodesError) throw nodesError;
+
+            // 3. Fetch Edges
+            const { data: dbEdges, error: edgesError } = await supabase
+                .from('edges')
+                .select('*')
+                .eq('tree_id', id);
+            if (edgesError) throw edgesError;
+
+            // 4. Transform
+            const flowNodes: ConversationNode[] = (dbNodes || []).map((node: any) => ({
+                id: node.id,
+                type: 'conversation',
+                position: { x: node.position_x, y: node.position_y },
+                data: {
+                    role: node.data.role,
+                    content: node.data.content,
+                    branchContext: node.data.branchContext,
+                    modelConfig: node.model_config
+                }
+            }));
+
+            const flowEdges: Edge[] = (dbEdges || []).map((edge: any) => ({
+                id: edge.id || `edge-${edge.source_id}-${edge.target_id}`,
+                source: edge.source_id,
+                target: edge.target_id,
+                type: 'smoothstep',
+                animated: true,
+                style: { stroke: '#94a3b8', strokeWidth: 2 }, // slate-400
+            }));
+
+            // 5. Load into Store
+            loadGraph(flowNodes, flowEdges, tree.id, tree.name);
+
+        } catch (error) {
+            console.error('Failed to load tree:', error);
+            setSyncStatus('error');
+        }
+    }, [loadGraph, setSyncStatus]);
 
     // Debounced Auto-save
     useEffect(() => {
@@ -193,5 +273,10 @@ export function usePersistence() {
         };
     }, [nodes, edges, treeName, saveTree, setSyncStatus]);
 
-    // Initial Loading is handled by components calling loadTree/loadGraph
+
+    return {
+        saveTree,
+        loadTree,
+        syncStatus
+    };
 }

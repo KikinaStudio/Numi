@@ -241,6 +241,7 @@ export const useCanvasStore = create<CanvasState>()(
                 target: id,
                 type: 'smoothstep',
                 animated: true,
+                style: { stroke: '#94a3b8', strokeWidth: 2 }, // slate-400
             };
 
             set((state) => {
