@@ -135,12 +135,14 @@ function ConversationNodeComponent(props: NodeProps) {
             onDoubleClick={(e) => e.stopPropagation()}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            style={{ zIndex: isHovered || selected ? 1000 : undefined }}
             className={cn(
                 'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out',
                 'hover:shadow-2xl',
                 'w-[450px]',
                 !selected && !isHovered && nodeData.hasChildren && isAssistant && 'w-[250px]',
                 selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+                (isHovered || selected) && 'shadow-2xl ring-1 ring-primary/20',
                 isUser && (theme === 'dark'
                     ? 'bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30'
                     : 'bg-gradient-to-br from-blue-500/5 to-purple-500/5 border-blue-500/20 shadow-blue-500/5'),

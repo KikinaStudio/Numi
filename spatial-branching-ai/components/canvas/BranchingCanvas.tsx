@@ -11,6 +11,7 @@ import {
     useReactFlow,
     Panel,
     NodeTypes,
+    PanOnScrollMode,
 } from '@xyflow/react';
 import { useCanvasStore, useNodes, useEdges, ConversationNodeData, useTemporalStore } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
@@ -244,6 +245,8 @@ function Canvas() {
                 minZoom={0.1}
                 maxZoom={2}
                 panOnScroll
+                panOnScrollSpeed={1.2}
+                panOnScrollMode={PanOnScrollMode.Free}
                 zoomOnScroll={false}
                 zoomOnPinch
                 attributionPosition="bottom-left"
