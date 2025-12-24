@@ -19,11 +19,12 @@ function ConversationNodeComponent(props: NodeProps) {
     const nodeData = data as ConversationNodeData;
 
     const contentRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [branchButton, setBranchButton] = useState<BranchButtonState>({ show: false, x: 0, y: 0, text: '' });
 
     const { updateNode, setTextSelection, selectNode, createChildNode } = useCanvasStore();
-    const { generate } = useChat();
+    const { generate, abort } = useChat();
 
     const isUser = nodeData.role === 'user';
     const isAssistant = nodeData.role === 'assistant';
@@ -142,22 +143,30 @@ function ConversationNodeComponent(props: NodeProps) {
     }, [id, updateNode]);
 
     const handleSubmit = useCallback(async (content: string) => {
+        console.log(`[Submit] Node ${id} submitting content:`, content.substring(0, 20) + '...');
         setIsEditing(false);
         updateNode(id, { content });
 
         if (isUser && content.trim()) {
             const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
-            if (parentNode) {
-                const newPos = {
-                    x: parentNode.position.x + 50,
-                    y: parentNode.position.y + 200
-                };
-                const childId = createChildNode(id, newPos);
-                try {
-                    await generate(childId);
-                } catch (err) {
-                    console.error("Generation failed", err);
-                }
+            if (!parentNode) {
+                console.error(`[Submit] Failed to find parent node ${id} in store!`);
+                return;
+            }
+
+            const newPos = {
+                x: parentNode.position.x + 50,
+                y: parentNode.position.y + 250
+            };
+
+            console.log(`[Submit] Creating child for ${id} at`, newPos);
+            const childId = createChildNode(id, newPos);
+
+            try {
+                console.log(`[Submit] Triggering generation for ${childId}`);
+                await generate(childId);
+            } catch (err) {
+                console.error("[Submit] Generation failed:", err);
             }
         }
     }, [id, updateNode, isUser, createChildNode, generate]);
@@ -240,7 +249,7 @@ function ConversationNodeComponent(props: NodeProps) {
                 {isEditing ? (
                     <div className="flex flex-col gap-3">
                         <textarea
-                            id={`textarea-${id}`}
+                            ref={textareaRef}
                             autoFocus
                             defaultValue={nodeData.content}
                             onBlur={handleBlur}
@@ -252,8 +261,7 @@ function ConversationNodeComponent(props: NodeProps) {
                             <button
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => {
-                                    const el = document.getElementById(`textarea-${id}`) as HTMLTextAreaElement;
-                                    if (el) handleSubmit(el.value);
+                                    if (textareaRef.current) handleSubmit(textareaRef.current.value);
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95"
                             >

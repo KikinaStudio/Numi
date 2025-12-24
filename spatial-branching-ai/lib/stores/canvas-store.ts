@@ -199,6 +199,7 @@ export const useCanvasStore = create<CanvasState>()(
         // Branching operations
         createRootNode: (position, content = '') => {
             const id = generateId();
+            console.log(`[Store] Creating root node: ${id}`);
             const newNode: ConversationNode = {
                 id,
                 type: 'conversation',
@@ -219,6 +220,7 @@ export const useCanvasStore = create<CanvasState>()(
         createChildNode: (parentId, position, branchContext) => {
             const id = generateId();
             const parent = get().nodes.find((n) => n.id === parentId);
+            console.log(`[Store] Creating child node: ${id} (parent: ${parentId})`);
 
             // Determine role based on parent
             const role: 'user' | 'assistant' = parent?.data.role === 'user' ? 'assistant' : 'user';
@@ -246,6 +248,7 @@ export const useCanvasStore = create<CanvasState>()(
             set((state) => {
                 state.nodes.push(newNode);
                 state.edges.push(newEdge);
+                console.log(`[Store] Pushed node ${id} and edge ${newEdge.id}`);
             });
 
             return id;
