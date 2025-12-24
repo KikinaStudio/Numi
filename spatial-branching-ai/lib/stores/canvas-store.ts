@@ -41,6 +41,7 @@ interface CanvasState {
     edges: Edge[];
     selectedNodeId: string | null;
     textSelection: TextSelection | null;
+    contextMenu: { x: number; y: number; nodeId: string } | null;
     isConnecting: boolean;
 
     // Persistence
@@ -65,6 +66,7 @@ interface CanvasState {
     // Selection
     selectNode: (id: string | null) => void;
     setTextSelection: (selection: TextSelection | null) => void;
+    setContextMenu: (menu: { x: number; y: number; nodeId: string } | null) => void;
 
     // Persistence Actions
     setTreeId: (id: string | null) => void;
@@ -100,6 +102,7 @@ export const useCanvasStore = create<CanvasState>()(
         edges: [],
         selectedNodeId: null,
         textSelection: null,
+        contextMenu: null,
         isConnecting: false,
         treeId: null,
         treeName: 'Untitled Conversation',
@@ -192,9 +195,10 @@ export const useCanvasStore = create<CanvasState>()(
             });
         },
 
-        // Selection
+        // Selection & UI
         selectNode: (id) => set({ selectedNodeId: id }),
         setTextSelection: (selection) => set({ textSelection: selection }),
+        setContextMenu: (menu) => set({ contextMenu: menu }),
 
         // Branching operations
         createRootNode: (position, content = '') => {

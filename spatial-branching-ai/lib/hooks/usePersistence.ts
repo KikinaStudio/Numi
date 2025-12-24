@@ -261,7 +261,12 @@ export function usePersistence() {
             clearTimeout(timeoutRef.current);
         }
 
-        setSyncStatus('unsaved');
+        // Only update to 'unsaved' if we aren't already in a non-synced state
+        // This prevents 60fps re-renders during dragging
+        if (syncStatus === 'synced') {
+            setSyncStatus('unsaved');
+        }
+
         timeoutRef.current = setTimeout(() => {
             saveTree();
         }, DEBOUNCE_DELAY);
@@ -271,7 +276,7 @@ export function usePersistence() {
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [nodes, edges, treeName, saveTree, setSyncStatus]);
+    }, [nodes, edges, treeName, saveTree, setSyncStatus, syncStatus]);
 
 
     return {

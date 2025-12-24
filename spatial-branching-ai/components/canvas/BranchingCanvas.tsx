@@ -54,13 +54,14 @@ function Canvas() {
         setTreeName,
         textSelection,
         setTextSelection,
+        contextMenu,
+        setContextMenu,
         syncStatus,
     } = useCanvasStore();
 
     // Persistence hook for auto-saving
     usePersistence();
 
-    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [showTreeList, setShowTreeList] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
 

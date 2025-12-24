@@ -5,41 +5,29 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight } from 'lucide-react';
 
-interface BranchButtonState {
-    show: boolean;
-    x: number;
-    y: number;
-    text: string;
-}
 
 function ConversationNodeComponent(props: NodeProps) {
     const { id, data, selected } = props;
     const nodeData = data as ConversationNodeData;
 
     const contentRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [branchButton, setBranchButton] = useState<BranchButtonState>({ show: false, x: 0, y: 0, text: '' });
 
-    const { updateNode, setTextSelection, selectNode, createChildNode } = useCanvasStore();
+    const { updateNode, setTextSelection, selectNode, setContextMenu, createChildNode } = useCanvasStore();
     const { generate } = useChat();
 
     const isUser = nodeData.role === 'user';
     const isAssistant = nodeData.role === 'assistant';
 
-    // Handle text selection for deep branching and floating button
-    const handleMouseUp = useCallback(() => {
+    // Handle text selection for deep branching via context menu
+    const handleMouseUp = useCallback((e: React.MouseEvent) => {
         const selection = window.getSelection();
         if (selection && selection.toString().trim().length > 0 && contentRef.current) {
             const text = selection.toString();
             const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            const contentRect = contentRef.current.getBoundingClientRect();
-
-            // Calculate position relative to the node content div
-            const x = rect.left - contentRect.left + (rect.width / 2);
-            const y = rect.top - contentRect.top;
 
             const preSelectionRange = range.cloneRange();
             preSelectionRange.selectNodeContents(contentRef.current);
@@ -52,41 +40,19 @@ function ConversationNodeComponent(props: NodeProps) {
                 range: [start, start + text.length],
             });
 
-            setBranchButton({
-                show: true,
-                x: x + 16,
-                y: y + 16,
-                text
+            // Trigger context menu immediately at mouse position
+            setContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                nodeId: id,
             });
-        } else {
-            setBranchButton(prev => ({ ...prev, show: false }));
         }
-    }, [id, setTextSelection]);
+    }, [id, setTextSelection, setContextMenu]);
 
-    const handleBranchHere = useCallback(async () => {
-        const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
-        if (!parentNode) return;
-
-        const newPos = {
-            x: parentNode.position.x + 50,
-            y: parentNode.position.y + 200
-        };
-
-        const childId = createChildNode(id, newPos, branchButton.text);
-
-        setBranchButton(prev => ({ ...prev, show: false }));
-        if (window.getSelection()) window.getSelection()?.removeAllRanges();
-        setTextSelection(null);
-
-        if (isUser) {
-            await generate(childId);
-        }
-    }, [id, branchButton.text, createChildNode, isUser, generate, setTextSelection]);
 
     const handleClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         selectNode(id);
-        setBranchButton(prev => ({ ...prev, show: false }));
     }, [id, selectNode]);
 
     const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -111,7 +77,15 @@ function ConversationNodeComponent(props: NodeProps) {
     // Manual generation handler
     const handleGenerate = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!isUser || !nodeData.content.trim()) return;
+
+        // Sync content from textarea if currently editing
+        let currentContent = nodeData.content;
+        if (isEditing && textareaRef.current) {
+            currentContent = textareaRef.current.value;
+            updateNode(id, { content: currentContent });
+        }
+
+        if (!isUser || !currentContent.trim()) return;
 
         const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
         if (parentNode) {
@@ -126,7 +100,21 @@ function ConversationNodeComponent(props: NodeProps) {
                 console.error("Generation failed", err);
             }
         }
-    }, [id, isUser, nodeData.content, createChildNode, generate]);
+    }, [id, isUser, nodeData.content, isEditing, updateNode, createChildNode, generate]);
+
+    // Reply handler for Assistant nodes
+    const handleReply = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
+        if (parentNode) {
+            const newPos = {
+                x: parentNode.position.x + 50,
+                y: parentNode.position.y + 200
+            };
+            const childId = createChildNode(id, newPos);
+            selectNode(childId);
+        }
+    }, [id, createChildNode, selectNode]);
 
     return (
         <div
@@ -187,9 +175,10 @@ function ConversationNodeComponent(props: NodeProps) {
                 </div>
             )}
 
-            <div className="p-4 relative">
-                {isEditing ? (
+            <div className="p-4 relative nodrag cursor-auto">
+                {isEditing || (selected && !isAssistant) ? (
                     <textarea
+                        ref={textareaRef}
                         autoFocus
                         defaultValue={nodeData.content}
                         onBlur={handleBlur}
@@ -217,11 +206,23 @@ function ConversationNodeComponent(props: NodeProps) {
                         <button
                             onMouseDown={(e) => e.preventDefault()} // Prevent blur
                             onClick={handleGenerate}
-                            className="bg-primary text-primary-foreground p-2 rounded-full shadow-md hover:bg-primary/90 transition-all flex items-center gap-2 text-xs font-medium pr-3 pl-2 h-7"
+                            className="bg-primary text-primary-foreground p-2 rounded-full shadow-md hover:bg-primary/90 transition-all flex items-center justify-center h-8 w-8"
                             title="Generate Response"
                         >
-                            <Send className="h-3 w-3" />
-                            Generate
+                            <ArrowRight className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+
+                {/* Reply Button for Assistant Nodes */}
+                {isAssistant && !nodeData.isGenerating && (
+                    <div className="absolute bottom-2 right-2 flex justify-end z-10 transition-opacity">
+                        <button
+                            onClick={handleReply}
+                            className="bg-accent text-accent-foreground p-2 rounded-full shadow-md hover:bg-accent/90 transition-all flex items-center justify-center h-8 w-8 border border-border"
+                            title="Reply"
+                        >
+                            <Reply className="h-4 w-4" />
                         </button>
                     </div>
                 )}
@@ -240,26 +241,6 @@ function ConversationNodeComponent(props: NodeProps) {
                 </button>
             </div>
 
-            {branchButton.show && (
-                <div
-                    className="absolute z-50 transform -translate-x-1/2"
-                    style={{
-                        top: branchButton.y - 10,
-                        left: branchButton.x,
-                    }}
-                >
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleBranchHere();
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-full shadow-lg hover:bg-primary/90 transition-all animate-in fade-in zoom-in-50 duration-200"
-                    >
-                        <GitBranch className="h-3 w-3" />
-                        Branch here
-                    </button>
-                </div>
-            )}
 
             <Handle
                 type="source"
