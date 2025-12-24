@@ -50,3 +50,8 @@ export interface DbEdge {
 export const isSupabaseConfigured = (): boolean => {
     return supabase !== null;
 };
+
+export interface TreeWithContent extends DbTree {
+    nodes: DbNode[];
+    edges: DbEdge[];
+}

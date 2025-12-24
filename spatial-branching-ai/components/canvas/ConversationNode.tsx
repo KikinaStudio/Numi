@@ -44,8 +44,9 @@ function ConversationNodeComponent(props: NodeProps) {
         selectNode(id);
     }, [id, selectNode]);
 
-    // Handle content editing
-    const handleDoubleClick = useCallback(() => {
+    // Handle content editing - stop propagation to prevent canvas from creating new node
+    const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
         if (isUser) {
             setIsEditing(true);
         }
@@ -71,6 +72,7 @@ function ConversationNodeComponent(props: NodeProps) {
     return (
         <div
             onClick={handleClick}
+            onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
                 'relative group min-w-[280px] max-w-[420px] rounded-xl border shadow-lg backdrop-blur-sm transition-all duration-200',
                 'hover:shadow-xl hover:scale-[1.02]',

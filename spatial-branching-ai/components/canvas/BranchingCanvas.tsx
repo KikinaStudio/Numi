@@ -16,8 +16,10 @@ import { useCanvasStore, useNodes, useEdges, ConversationNodeData } from '@/lib/
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen } from 'lucide-react';
 import { useChat } from '@/lib/hooks/useChat';
+import { usePersistence } from '@/lib/hooks/usePersistence';
+import { TreeListDialog } from './TreeListDialog';
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
@@ -46,9 +48,14 @@ function Canvas() {
         selectNode,
         textSelection,
         setTextSelection,
+        syncStatus,
     } = useCanvasStore();
 
+    // Persistence hook for auto-saving
+    usePersistence();
+
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const [showTreeList, setShowTreeList] = useState(false);
 
     // AI Chat hook for generating responses
     const { generate } = useChat();
@@ -169,12 +176,28 @@ function Canvas() {
                     zoomable
                 />
 
+                {/* Sync Status Panel */}
+                <Panel position="top-right" className="mt-4 mr-4">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
+                        {syncStatus === 'saving' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
+                        {syncStatus === 'error' && <AlertCircle className="h-4 w-4 text-destructive" />}
+                        <span className="text-xs font-medium text-muted-foreground">
+                            {syncStatus === 'saving' && 'Saving...'}
+                            {syncStatus === 'synced' && 'Saved'}
+                            {syncStatus === 'error' && 'Error'}
+                            {syncStatus === 'unsaved' && 'Unsaved'}
+                        </span>
+                    </div>
+                </Panel>
+
                 {/* Instructions Panel */}
                 <Panel position="top-center" className="mt-4">
                     <div className="px-4 py-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
                         <p className="text-sm text-muted-foreground">
-                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Double-click</kbd> to create a node •
-                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Right-click</kbd> on a node to branch
+                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Double-click</kbd> canvas to create •
+                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Double-click</kbd> node to edit •
+                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Right-click</kbd> to branch
                         </p>
                     </div>
                 </Panel>
@@ -182,6 +205,16 @@ function Canvas() {
                 {/* Quick actions panel */}
                 <Panel position="bottom-center" className="mb-4">
                     <div className="flex items-center gap-2 p-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-2"
+                            onClick={() => setShowTreeList(true)}
+                        >
+                            <FolderOpen className="h-4 w-4" />
+                            Open
+                        </Button>
+                        <div className="w-px h-6 bg-border" />
                         <Button
                             size="sm"
                             variant="outline"
@@ -209,6 +242,8 @@ function Canvas() {
                     onClose={handleCloseContextMenu}
                 />
             )}
+
+            <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
         </div>
     );
 }

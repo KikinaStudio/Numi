@@ -43,6 +43,10 @@ interface CanvasState {
     textSelection: TextSelection | null;
     isConnecting: boolean;
 
+    // Persistence
+    treeId: string | null;
+    syncStatus: 'synced' | 'saving' | 'error' | 'unsaved';
+
     // Actions
     setNodes: (nodes: ConversationNode[]) => void;
     setEdges: (edges: Edge[]) => void;
@@ -59,6 +63,11 @@ interface CanvasState {
     // Selection
     selectNode: (id: string | null) => void;
     setTextSelection: (selection: TextSelection | null) => void;
+
+    // Persistence Actions
+    setTreeId: (id: string | null) => void;
+    setSyncStatus: (status: 'synced' | 'saving' | 'error' | 'unsaved') => void;
+    loadGraph: (nodes: ConversationNode[], edges: Edge[]) => void;
 
     // Branching
     createRootNode: (position: XYPosition, content?: string) => string;
@@ -80,10 +89,17 @@ export const useCanvasStore = create<CanvasState>()(
         selectedNodeId: null,
         textSelection: null,
         isConnecting: false,
+        treeId: null,
+        syncStatus: 'synced',
 
         // Setters
         setNodes: (nodes) => set({ nodes }),
         setEdges: (edges) => set({ edges }),
+
+        // Persistence Actions
+        setTreeId: (id) => set({ treeId: id }),
+        setSyncStatus: (status) => set({ syncStatus: status }),
+        loadGraph: (nodes, edges) => set({ nodes, edges, syncStatus: 'synced' }),
 
         // React Flow change handlers (optimized)
         onNodesChange: (changes) => {
