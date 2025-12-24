@@ -263,12 +263,6 @@ function Canvas() {
                                 <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
                             </div>
                         )}
-                        <span className="text-xs font-medium text-muted-foreground">
-                            {syncStatus === 'saving' && 'Saving...'}
-                            {syncStatus === 'synced' && 'Saved'}
-                            {syncStatus === 'error' && 'Error'}
-                            {syncStatus === 'unsaved' && 'Unsaved'}
-                        </span>
                     </div>
 
                     {/* Collaborators List */}
