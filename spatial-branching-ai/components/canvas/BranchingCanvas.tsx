@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useMemo, useState } from 'react';
+import { useCallback, useRef, useMemo, useState, useEffect } from 'react';
 import {
     ReactFlow,
     Background,
@@ -17,7 +17,7 @@ import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users } from 'lucide-react';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
@@ -57,6 +57,8 @@ function Canvas() {
         contextMenu,
         setContextMenu,
         syncStatus,
+        collaborators,
+        treeId,
     } = useCanvasStore();
 
     // Persistence hook for auto-saving
@@ -67,6 +69,20 @@ function Canvas() {
 
     // AI Chat hook for generating responses
     const { generate } = useChat();
+
+    // Generate random identity for collaboration
+    useEffect(() => {
+        const guestId = Math.random().toString(36).substring(7);
+        const names = ['Artiste', 'Explorateur', 'Architecte', 'Penseur', 'Visionnaire', 'Guide'];
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+        const randomName = names[Math.floor(Math.random() * names.length)];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+        useCanvasStore.getState().updateCollaborator(guestId, {
+            name: `${randomName} (You)`,
+            color: randomColor
+        });
+    }, []);
 
     // Handle pane click - create root node or clear selection
     const onPaneClick = useCallback(() => {
@@ -153,7 +169,15 @@ function Canvas() {
         if (!contextMenu) return;
         deleteNode(contextMenu.nodeId);
         setContextMenu(null);
-    }, [contextMenu, deleteNode]);
+    }, [contextMenu, deleteNode, setContextMenu]);
+
+    const handleShare = useCallback(() => {
+        if (!treeId) return;
+        const url = `${window.location.origin}${window.location.pathname}?treeId=${treeId}`;
+        navigator.clipboard.writeText(url);
+        // Simple visual feedback could be improved with a toast
+        alert('Share link copied to clipboard!');
+    }, [treeId]);
 
     // Default edge options for consistent styling  
     const defaultEdgeOptions = useMemo(() => ({
@@ -237,6 +261,26 @@ function Canvas() {
                             {syncStatus === 'unsaved' && 'Unsaved'}
                         </span>
                     </div>
+
+                    {/* Collaborators List */}
+                    {Object.keys(collaborators).length > 0 && (
+                        <div className="mt-2 flex items-center -space-x-2 overflow-hidden">
+                            {Object.values(collaborators).map((c) => (
+                                <div
+                                    key={c.id}
+                                    className="inline-block h-8 w-8 rounded-full ring-2 ring-background flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                                    style={{ backgroundColor: c.color }}
+                                    title={c.name}
+                                >
+                                    {c.name.charAt(0).toUpperCase()}
+                                </div>
+                            ))}
+                            <div className="flex items-center ml-2 px-2 py-1 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                                <Users className="h-3 w-3 mr-1" />
+                                {Object.keys(collaborators).length} online
+                            </div>
+                        </div>
+                    )}
                 </Panel>
 
                 {/* Instructions Panel */}
@@ -282,6 +326,18 @@ function Canvas() {
                         >
                             <FolderOpen className="h-4 w-4" />
                             Open
+                        </Button>
+                        <div className="w-px h-6 bg-border" />
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
+                            onClick={handleShare}
+                            disabled={!treeId}
+                            title="Share this conversation"
+                        >
+                            <Share2 className="h-4 w-4" />
+                            Share
                         </Button>
                         <div className="w-px h-6 bg-border" />
                         <Button

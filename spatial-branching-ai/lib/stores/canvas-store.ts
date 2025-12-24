@@ -34,6 +34,14 @@ export interface TextSelection {
     range: [number, number];
 }
 
+export interface Collaborator {
+    id: string;
+    name: string;
+    color: string;
+    position?: XYPosition;
+    lastActive: number;
+}
+
 // Store interface
 interface CanvasState {
     // State
@@ -43,6 +51,7 @@ interface CanvasState {
     textSelection: TextSelection | null;
     contextMenu: { x: number; y: number; nodeId: string } | null;
     isConnecting: boolean;
+    collaborators: Record<string, Collaborator>;
 
     // Persistence
     treeId: string | null;
@@ -67,6 +76,8 @@ interface CanvasState {
     selectNode: (id: string | null) => void;
     setTextSelection: (selection: TextSelection | null) => void;
     setContextMenu: (menu: { x: number; y: number; nodeId: string } | null) => void;
+    setCollaborators: (collaborators: Record<string, Collaborator>) => void;
+    updateCollaborator: (id: string, data: Partial<Collaborator>) => void;
 
     // Persistence Actions
     setTreeId: (id: string | null) => void;
@@ -107,6 +118,7 @@ export const useCanvasStore = create<CanvasState>()(
         treeId: null,
         treeName: 'Untitled Conversation',
         syncStatus: 'synced',
+        collaborators: {},
 
         // Setters
         setNodes: (nodes) => set({ nodes }),
@@ -199,6 +211,20 @@ export const useCanvasStore = create<CanvasState>()(
         selectNode: (id) => set({ selectedNodeId: id }),
         setTextSelection: (selection) => set({ textSelection: selection }),
         setContextMenu: (menu) => set({ contextMenu: menu }),
+        setCollaborators: (collaborators) => set({ collaborators }),
+        updateCollaborator: (id, data) => set((state) => {
+            if (state.collaborators[id]) {
+                state.collaborators[id] = { ...state.collaborators[id], ...data };
+            } else if (data.name && data.color) {
+                state.collaborators[id] = {
+                    id,
+                    name: data.name,
+                    color: data.color,
+                    lastActive: Date.now(),
+                    ...data
+                };
+            }
+        }),
 
         // Branching operations
         createRootNode: (position, content = '') => {

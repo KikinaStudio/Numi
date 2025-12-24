@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
 import { useChat } from '@/lib/hooks/useChat';
 import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 
 function ConversationNodeComponent(props: NodeProps) {
@@ -121,8 +123,8 @@ function ConversationNodeComponent(props: NodeProps) {
             onClick={handleClick}
             onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
-                'relative group min-w-[280px] max-w-[420px] rounded-xl border shadow-lg backdrop-blur-sm transition-all duration-200',
-                'hover:shadow-xl hover:scale-[1.02]',
+                'relative group min-w-[320px] max-w-[520px] rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-200',
+                'hover:shadow-2xl hover:scale-[1.01]',
                 selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
                 isUser && 'bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30',
                 isAssistant && 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/30',
@@ -197,11 +199,17 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'text-sm leading-relaxed whitespace-pre-wrap select-text cursor-text pb-6',
+                            'prose-notion select-text cursor-text pb-6',
                             !nodeData.content && 'text-muted-foreground italic'
                         )}
                     >
-                        {nodeData.content || (isUser ? 'Click to type...' : 'Generating...')}
+                        {nodeData.content ? (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {nodeData.content}
+                            </ReactMarkdown>
+                        ) : (
+                            isUser ? 'Click to type...' : 'Generating...'
+                        )}
                     </div>
                 )}
 

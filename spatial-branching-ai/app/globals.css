@@ -119,6 +119,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -152,3 +153,75 @@
   fill: hsl(var(--foreground)) !important;
 }
 
+/* Notion-like Markdown Rendering Styles */
+.prose-notion {
+  @apply text-[15px] leading-[1.65] text-foreground/90;
+}
+
+.prose-notion h1,
+.prose-notion h2,
+.prose-notion h3 {
+  @apply font-bold text-foreground mt-8 mb-4 tracking-tight;
+}
+
+.prose-notion h1 {
+  @apply text-3xl;
+}
+
+.prose-notion h2 {
+  @apply text-2xl border-b border-border/50 pb-2;
+}
+
+.prose-notion h3 {
+  @apply text-xl;
+}
+
+.prose-notion p {
+  @apply mb-4 last:mb-0;
+}
+
+.prose-notion ul,
+.prose-notion ol {
+  @apply my-4 pl-6 space-y-2;
+}
+
+.prose-notion ul {
+  @apply list-disc;
+}
+
+.prose-notion ol {
+  @apply list-decimal;
+}
+
+.prose-notion li {
+  @apply pl-1;
+}
+
+.prose-notion strong {
+  @apply font-semibold text-foreground;
+}
+
+.prose-notion code {
+  @apply px-1.5 py-0.5 bg-muted rounded text-[13px] font-mono;
+}
+
+.prose-notion blockquote {
+  @apply pl-4 border-l-4 border-primary/30 italic text-muted-foreground my-4;
+}
+
+.prose-notion hr {
+  @apply my-8 border-border/50;
+}
+
+.prose-notion table {
+  @apply w-full my-6 border-collapse text-sm;
+}
+
+.prose-notion th,
+.prose-notion td {
+  @apply border border-border/50 p-2 text-left;
+}
+
+.prose-notion th {
+  @apply bg-muted/50 font-semibold;
+}

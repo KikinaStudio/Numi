@@ -43,8 +43,11 @@ export function usePersistence() {
         setTreeId,
         setTreeName,
         setSyncStatus,
+        setNodes,
+        setEdges,
         loadGraph,
-        syncStatus
+        syncStatus,
+        updateNode,
     } = useCanvasStore();
 
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -277,6 +280,139 @@ export function usePersistence() {
             }
         };
     }, [nodes, edges, treeName, saveTree, setSyncStatus, syncStatus]);
+
+    // Initial load from URL and Realtime Subscriptions
+    useEffect(() => {
+        const client = supabase;
+        if (!client) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const urlTreeId = params.get('treeId');
+
+        if (urlTreeId && urlTreeId !== treeId) {
+            loadTree(urlTreeId);
+        }
+
+        if (!treeId) return;
+
+        // 1. Subscribe to Nodes
+        const nodesChannel = client
+            .channel(`nodes:${treeId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'nodes',
+                    filter: `tree_id=eq.${treeId}`,
+                },
+                (payload) => {
+                    if (isSavingRef.current) return;
+
+                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                        const node = payload.new as DbNode;
+                        const flowNode: ConversationNode = {
+                            id: node.id,
+                            type: 'conversation',
+                            position: { x: node.position_x, y: node.position_y },
+                            data: {
+                                role: node.data.role,
+                                content: node.data.content,
+                                branchContext: node.data.branchContext,
+                                modelConfig: node.model_config,
+                            },
+                        };
+
+                        const currentNodes = useCanvasStore.getState().nodes;
+                        const existingNodeIndex = currentNodes.findIndex(n => n.id === node.id);
+
+                        if (existingNodeIndex !== -1) {
+                            const updatedNodes = [...currentNodes];
+                            updatedNodes[existingNodeIndex] = flowNode;
+                            setNodes(updatedNodes);
+                        } else {
+                            setNodes([...currentNodes, flowNode]);
+                        }
+                    } else if (payload.eventType === 'DELETE') {
+                        setNodes(useCanvasStore.getState().nodes.filter(n => n.id !== payload.old.id));
+                    }
+                }
+            )
+            .subscribe();
+
+        // 2. Subscribe to Edges
+        const edgesChannel = client
+            .channel(`edges:${treeId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'edges',
+                    filter: `tree_id=eq.${treeId}`,
+                },
+                (payload) => {
+                    if (isSavingRef.current) return;
+
+                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                        const edge = payload.new as DbEdge;
+                        const flowEdge: Edge = {
+                            id: edge.id || `edge-${edge.source_id}-${edge.target_id}`,
+                            source: edge.source_id,
+                            target: edge.target_id,
+                            type: 'smoothstep',
+                            animated: true,
+                            style: { stroke: '#94a3b8', strokeWidth: 2 },
+                        };
+
+                        const currentEdges = useCanvasStore.getState().edges;
+                        if (!currentEdges.find(e => e.id === flowEdge.id)) {
+                            setEdges([...currentEdges, flowEdge]);
+                        }
+                    } else if (payload.eventType === 'DELETE') {
+                        setEdges(useCanvasStore.getState().edges.filter(e => e.id !== payload.old.id && (e.source !== payload.old.source_id || e.target !== payload.old.target_id)));
+                    }
+                }
+            )
+            .subscribe();
+
+        // 3. Subscribe to Tree Meta (Name)
+        const treeChannel = client
+            .channel(`tree:${treeId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'trees',
+                    filter: `id=eq.${treeId}`,
+                },
+                (payload) => {
+                    if (isSavingRef.current) return;
+                    if (payload.new.name !== treeName) {
+                        setTreeName(payload.new.name);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            client.removeChannel(nodesChannel);
+            client.removeChannel(edgesChannel);
+            client.removeChannel(treeChannel);
+        };
+    }, [treeId, loadTree, setNodes, setEdges, setTreeName, treeName]);
+
+    // Update URL when treeId changes
+    useEffect(() => {
+        if (treeId) {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('treeId') !== treeId) {
+                params.set('treeId', treeId);
+                window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+            }
+        }
+    }, [treeId]);
 
 
     return {
