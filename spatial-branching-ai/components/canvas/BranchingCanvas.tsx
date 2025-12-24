@@ -58,6 +58,7 @@ function Canvas() {
         setContextMenu,
         syncStatus,
         syncError,
+        debug,
         collaborators,
         treeId,
     } = useCanvasStore();
@@ -277,6 +278,12 @@ function Canvas() {
                             </div>
                         )}
                     </div>
+                    {/* Debug Info */}
+                    {debug && (
+                        <div className="mt-2 text-[10px] text-muted-foreground bg-card/50 p-1 rounded font-mono">
+                            {debug}
+                        </div>
+                    )}
 
                     {/* Collaborators List */}
                     {Object.keys(collaborators).length > 0 && (

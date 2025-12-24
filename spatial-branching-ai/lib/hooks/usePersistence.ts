@@ -56,6 +56,8 @@ export function usePersistence() {
     const isSavingRef = useRef<boolean>(false);
     const channelRef = useRef<any>(null);
 
+    const { setDebug } = useCanvasStore.getState();
+
     // Serialize current state to detect changes
     const serializeState = (nodes: ConversationNode[], edges: Edge[]) => {
         return JSON.stringify({
@@ -322,9 +324,13 @@ export function usePersistence() {
                     event: '*',
                     schema: 'public',
                     table: 'nodes',
-                    filter: `tree_id=eq.${treeId}`,
+                    // Removing filter temporarily for debug
+                    // filter: `tree_id=eq.${treeId}`,
                 },
                 (payload) => {
+                    const timestamp = new Date().toLocaleTimeString();
+                    setDebug(`${timestamp} - NODE ${payload.eventType}`);
+
                     // Ignore if we are the one who sent this (via isSavingRef)
                     if (isSavingRef.current) return;
 
