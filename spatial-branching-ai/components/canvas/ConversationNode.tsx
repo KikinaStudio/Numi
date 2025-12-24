@@ -4,6 +4,7 @@ import { memo, useCallback, useRef, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
+import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
 import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, BookOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -21,6 +22,7 @@ import {
 function ConversationNodeComponent(props: NodeProps) {
     const { id, data, selected } = props;
     const nodeData = data as ConversationNodeData;
+    const { theme } = useSettingsStore();
 
     const contentRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -131,11 +133,15 @@ function ConversationNodeComponent(props: NodeProps) {
             onClick={handleClick}
             onDoubleClick={(e) => e.stopPropagation()}
             className={cn(
-                'relative group min-w-[320px] max-w-[520px] rounded-2xl border shadow-lg backdrop-blur-md transition-all duration-200',
+                'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-200',
                 'hover:shadow-2xl hover:scale-[1.01]',
                 selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
-                isUser && 'bg-white/80 dark:bg-gradient-to-br dark:from-blue-500/10 dark:to-purple-500/10 border-blue-500/20 dark:border-blue-500/30',
-                isAssistant && 'bg-white/80 dark:bg-gradient-to-br dark:from-emerald-500/10 dark:to-teal-500/10 border-emerald-500/20 dark:border-emerald-500/30',
+                isUser && (theme === 'dark'
+                    ? 'bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30'
+                    : 'bg-gradient-to-br from-blue-500/5 to-purple-500/5 border-blue-500/20 shadow-blue-500/5'),
+                isAssistant && (theme === 'dark'
+                    ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/30'
+                    : 'bg-gradient-to-br from-emerald-500/5 to-teal-500/5 border-emerald-500/20 shadow-emerald-500/5'),
                 nodeData.isGenerating && 'animate-pulse'
             )}
         >
@@ -147,18 +153,18 @@ function ConversationNodeComponent(props: NodeProps) {
 
             <div className={cn(
                 'flex items-center gap-2 px-4 py-2 border-b rounded-t-xl',
-                isUser && 'bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/10 dark:border-blue-500/20',
-                isAssistant && 'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/10 dark:border-emerald-500/20'
+                isUser && 'bg-blue-500/10 border-blue-500/20',
+                isAssistant && 'bg-emerald-500/10 border-emerald-500/20'
             )}>
                 <div className={cn(
                     'p-1.5 rounded-lg',
-                    isUser && 'bg-blue-500/10 dark:bg-blue-500/20',
-                    isAssistant && 'bg-emerald-500/10 dark:bg-emerald-500/20'
+                    isUser && 'bg-blue-500/20',
+                    isAssistant && 'bg-emerald-500/20'
                 )}>
                     {isUser ? (
-                        <User className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                        <User className="h-4 w-4 text-blue-400" />
                     ) : (
-                        <Bot className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                        <Bot className="h-4 w-4 text-emerald-400" />
                     )}
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
@@ -231,7 +237,7 @@ function ConversationNodeComponent(props: NodeProps) {
                             <SelectTrigger className="h-7 w-[130px] text-xs bg-background border-input shadow-sm backdrop-blur-sm animate-in fade-in zoom-in duration-200">
                                 <SelectValue placeholder="Agent" />
                             </SelectTrigger>
-                            <SelectContent className='dark:bg-[#1a1a1a]'>
+                            <SelectContent className="bg-popover">
                                 {PERSONAS.map(persona => (
                                     <SelectItem key={persona.id} value={persona.id} className="text-xs">
                                         <span className="flex items-center gap-2">

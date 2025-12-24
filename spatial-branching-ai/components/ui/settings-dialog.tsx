@@ -29,6 +29,41 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                 </DialogHeader>
 
                 <div className="grid gap-6 py-4">
+                    {/* Theme Selection */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none">
+                            Appearance
+                        </label>
+                        <div className="flex bg-muted p-1 rounded-md gap-1">
+                            <button
+                                onClick={() => setTheme('light')}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-sm transition-all",
+                                    theme === 'light'
+                                        ? "bg-background text-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Sun className="h-3.5 w-3.5" />
+                                Light
+                            </button>
+                            <button
+                                onClick={() => setTheme('dark')}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-sm transition-all",
+                                    theme === 'dark'
+                                        ? "bg-background text-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Moon className="h-3.5 w-3.5" />
+                                Dark
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="border-t" />
+
                     {/* Default Model Selection */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -48,31 +83,6 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                         <p className="text-[0.8rem] text-muted-foreground">
                             The model used for generating new branches.
                         </p>
-                    </div>
-
-                    {/* Theme Selection */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Appearance</label>
-                        <div className="flex bg-muted p-1 rounded-lg w-fit gap-1">
-                            <Button
-                                variant={theme === 'light' ? 'secondary' : 'ghost'}
-                                size="sm"
-                                onClick={() => setTheme('light')}
-                                className={cn("h-8 px-3 gap-2", theme === 'light' && "shadow-sm bg-background")}
-                            >
-                                <Sun className="h-4 w-4" />
-                                Light
-                            </Button>
-                            <Button
-                                variant={theme === 'dark' ? 'secondary' : 'ghost'}
-                                size="sm"
-                                onClick={() => setTheme('dark')}
-                                className={cn("h-8 px-3 gap-2", theme === 'dark' && "shadow-sm bg-background")}
-                            >
-                                <Moon className="h-4 w-4" />
-                                Dark
-                            </Button>
-                        </div>
                     </div>
 
                     <div className="border-t" />

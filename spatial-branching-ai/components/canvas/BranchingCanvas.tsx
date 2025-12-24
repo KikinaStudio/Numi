@@ -13,6 +13,7 @@ import {
     NodeTypes,
 } from '@xyflow/react';
 import { useCanvasStore, useNodes, useEdges, ConversationNodeData } from '@/lib/stores/canvas-store';
+import { useSettingsStore } from '@/lib/stores/settings-store';
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ interface ContextMenuState {
 
 function Canvas() {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
+    const { theme } = useSettingsStore();
     const { screenToFlowPosition } = useReactFlow();
 
     const nodes = useNodes();
@@ -189,10 +191,10 @@ function Canvas() {
         type: 'smoothstep' as const,
         animated: true,
         style: {
-            stroke: 'hsl(var(--primary))',
+            stroke: theme === 'dark' ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.5)',
             strokeWidth: 2,
         },
-    }), []);
+    }), [theme]);
 
     return (
         <div ref={reactFlowWrapper} className="w-full h-full">
@@ -219,7 +221,7 @@ function Canvas() {
                     variant={BackgroundVariant.Dots}
                     gap={20}
                     size={1}
-                    color="hsl(var(--muted-foreground) / 0.3)"
+                    color={theme === 'dark' ? "hsl(var(--muted-foreground) / 0.3)" : "hsl(var(--muted-foreground) / 0.15)"}
                 />
                 <Controls
                     className="!bg-card !border !border-border !rounded-lg !shadow-lg"
@@ -233,7 +235,7 @@ function Canvas() {
                             ? 'hsl(217.2 91.2% 59.8%)' // blue
                             : 'hsl(160.1 84.1% 39.4%)'; // emerald
                     }}
-                    maskColor="hsl(var(--background) / 0.7)"
+                    maskColor={theme === 'dark' ? "hsl(var(--background) / 0.7)" : "hsl(var(--background) / 0.4)"}
                     pannable
                     zoomable
                 />

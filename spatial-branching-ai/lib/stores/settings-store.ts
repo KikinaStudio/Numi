@@ -38,7 +38,7 @@ export const useSettingsStore = create<SettingsState>()(
                 openrouter: '',
             },
             defaultModel: 'xiaomi/mimo-v2-flash:free',
-            theme: 'dark' as const,
+            theme: 'dark',
             setApiKey: (provider, key) =>
                 set((state) => ({
                     apiKeys: { ...state.apiKeys, [provider]: key },
