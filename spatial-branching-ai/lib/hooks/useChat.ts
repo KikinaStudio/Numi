@@ -140,44 +140,47 @@ export function useChat(options: UseChatOptions = {}) {
             updateNode(nodeId, { isGenerating: false });
 
             // Auto-naming logic: If this is the first exchange (tree is untitled), name it.
-            const { treeName, setTreeName, nodes } = useCanvasStore.getState();
-            if (treeName === 'Untitled Conversation') {
-                try {
-                    // Find the user prompt that triggered this response
-                    const context = getConversationContext(nodeId);
-                    // Context format: [{role, content}, ...]
-                    // We want to summarize the first user message + this response
-                    const firstUserMessage = context.find(m => m.role === 'user')?.content || '';
-                    const assistantResponse = fullContent;
+            // Small delay to ensure the store has processed the last node update
+            setTimeout(async () => {
+                const { treeName, setTreeName } = useCanvasStore.getState();
+                if (treeName === 'Untitled Conversation') {
+                    try {
+                        // Find the user prompt that triggered this response
+                        const context = getConversationContext(nodeId);
+                        // Context format: [{role, content}, ...]
+                        // We want to summarize the first user message + this response
+                        const firstUserMessage = context.find(m => m.role === 'user')?.content || '';
+                        const assistantResponse = fullContent;
 
-                    if (firstUserMessage) {
-                        const namingPrompt = `Summarize this conversation topic in 4 words or less. strictly 4 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
+                        if (firstUserMessage) {
+                            const namingPrompt = `Summarize this conversation topic in 4 words or less. strictly 4 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
 
-                        const nameResponse = await fetch('/api/chat', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                messages: [{ role: 'user', content: namingPrompt }],
-                                model: 'mistralai/mistral-nemo', // Requested by user (Xiaomi Mimo v2 equivalent)
-                                apiKey: apiKeys.openrouter,
-                                provider: 'openrouter',
-                                temperature: 0.3, // Low temp for precise formatting
-                                stream: false,
-                            }),
-                        });
+                            const nameResponse = await fetch('/api/chat', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    messages: [{ role: 'user', content: namingPrompt }],
+                                    model: 'mistralai/mistral-nemo', // Requested by user (Xiaomi Mimo v2 equivalent)
+                                    apiKey: apiKeys.openrouter,
+                                    provider: 'openrouter',
+                                    temperature: 0.3, // Low temp for precise formatting
+                                    stream: false,
+                                }),
+                            });
 
-                        if (nameResponse.ok) {
-                            const data = await nameResponse.json();
-                            const newTitle = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, '');
-                            if (newTitle) {
-                                setTreeName(newTitle);
+                            if (nameResponse.ok) {
+                                const data = await nameResponse.json();
+                                const newTitle = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, '');
+                                if (newTitle) {
+                                    setTreeName(newTitle);
+                                }
                             }
                         }
+                    } catch (error) {
+                        console.error('Failed to auto-name tree:', error);
                     }
-                } catch (error) {
-                    console.error('Failed to auto-name tree:', error);
                 }
-            }
+            }, 500);
 
             return fullContent;
         } catch (error: any) {
