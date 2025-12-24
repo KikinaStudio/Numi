@@ -60,12 +60,10 @@ interface CanvasState {
     treeName: string;
     syncStatus: 'synced' | 'saving' | 'error' | 'unsaved';
     syncError: string | null;
-    debug: string | null;
 
     // Actions
     setNodes: (nodes: ConversationNode[]) => void;
     setEdges: (edges: Edge[]) => void;
-    setDebug: (info: string) => void;
     onNodesChange: (changes: NodeChange[]) => void;
     onEdgesChange: (changes: EdgeChange[]) => void;
     onConnect: (connection: Connection) => void;
@@ -125,14 +123,12 @@ export const useCanvasStore = create<CanvasState>()(
         treeName: 'Untitled Conversation',
         syncStatus: 'synced',
         syncError: null,
-        debug: null,
         collaborators: {},
         me: null,
 
         // Setters
         setNodes: (nodes) => set({ nodes }),
         setEdges: (edges) => set({ edges }),
-        setDebug: (info: string) => set({ debug: info }),
 
         // Persistence Actions
         setTreeId: (id) => set({ treeId: id }),

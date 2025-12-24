@@ -58,7 +58,6 @@ function Canvas() {
         setContextMenu,
         syncStatus,
         syncError,
-        debug,
         collaborators,
         treeId,
     } = useCanvasStore();
@@ -257,33 +256,20 @@ function Canvas() {
                 {/* Sync Status Panel */}
                 <Panel position="top-right" className="mt-4 mr-4">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
-                        {syncStatus === 'saving' && (
-                            <div title="Sauvegarde en cours...">
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/50" />
-                            </div>
-                        )}
-                        {syncStatus === 'synced' && (
-                            <div title="Sauvegardé">
-                                <Cloud className="h-4 w-4 text-muted-foreground/30" />
-                            </div>
-                        )}
-                        {syncStatus === 'unsaved' && (
-                            <div title="Modifications non enregistrées">
-                                <Cloud className="h-4 w-4 text-muted-foreground/70" />
-                            </div>
-                        )}
+                        {syncStatus === 'saving' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
                         {syncStatus === 'error' && (
                             <div title={syncError || 'Sync Error'}>
                                 <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
                             </div>
                         )}
+                        <span className="text-xs font-medium text-muted-foreground">
+                            {syncStatus === 'saving' && 'Saving...'}
+                            {syncStatus === 'synced' && 'Saved'}
+                            {syncStatus === 'error' && 'Error'}
+                            {syncStatus === 'unsaved' && 'Unsaved'}
+                        </span>
                     </div>
-                    {/* Debug Info */}
-                    {debug && (
-                        <div className="mt-2 text-[10px] text-muted-foreground bg-card/50 p-1 rounded font-mono">
-                            {debug}
-                        </div>
-                    )}
 
                     {/* Collaborators List */}
                     {Object.keys(collaborators).length > 0 && (

@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase/client';
 import { ConversationNode } from '@/lib/stores/canvas-store';
 import { Edge } from '@xyflow/react';
 
-const DEBOUNCE_DELAY = 2000; // 2 seconds auto-save (less frequent)
+const DEBOUNCE_DELAY = 1000; // 1 second auto-save
 
 interface DbNode {
     id: string;
@@ -56,8 +56,6 @@ export function usePersistence() {
     const isSavingRef = useRef<boolean>(false);
     const channelRef = useRef<any>(null);
 
-    const { setDebug } = useCanvasStore.getState();
-
     // Serialize current state to detect changes
     const serializeState = (nodes: ConversationNode[], edges: Edge[]) => {
         return JSON.stringify({
@@ -90,10 +88,9 @@ export function usePersistence() {
 
         try {
             const currentState = serializeState(nodes, edges);
-
-            // Only skip if explicitly synced and state matches
-            // If status is 'unsaved', we MUST save even if state looks same (to fix stuck UI)
-            if (treeId && currentState === lastSavedRef.current && syncStatus === 'synced') {
+            // If nothing changed since last save (and we aren't creating a new tree), skip
+            if (treeId && currentState === lastSavedRef.current) {
+                setSyncStatus('synced');
                 isSavingRef.current = false;
                 return;
             }
@@ -256,9 +253,6 @@ export function usePersistence() {
             // 5. Load into Store
             loadGraph(flowNodes, flowEdges, tree.id, tree.name);
 
-            // 6. Initialize lastSavedRef to prevent immediate re-save
-            lastSavedRef.current = serializeState(flowNodes, flowEdges);
-
         } catch (error: any) {
             console.error('Failed to load tree:', error);
             setSyncStatus('error', `Load failed: ${error.message || 'Unknown error'}`);
@@ -268,13 +262,6 @@ export function usePersistence() {
     // Debounced Auto-save
     useEffect(() => {
         if (nodes.length === 0) return; // Don't save empty state immediately
-
-        // ABORT auto-save if ANY node is currently generating AI content
-        // This solves the "save every half second" issue during streaming
-        const isGenerating = nodes.some(n => n.data.isGenerating);
-        if (isGenerating) {
-            return;
-        }
 
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
@@ -312,8 +299,13 @@ export function usePersistence() {
         if (!treeId) return;
 
         // Presence & Realtime Channel
-        // Presence & Realtime Channel
-        const channel = client.channel(`tree:${treeId}`);
+        const channel = client.channel(`tree:${treeId}`, {
+            config: {
+                presence: {
+                    key: treeId,
+                },
+            },
+        });
         channelRef.current = channel;
 
         // 1. Listen for Database Changes
@@ -324,13 +316,9 @@ export function usePersistence() {
                     event: '*',
                     schema: 'public',
                     table: 'nodes',
-                    // Removing filter temporarily for debug
-                    // filter: `tree_id=eq.${treeId}`,
+                    filter: `tree_id=eq.${treeId}`,
                 },
                 (payload) => {
-                    const timestamp = new Date().toLocaleTimeString();
-                    setDebug(`${timestamp} - NODE ${payload.eventType}`);
-
                     // Ignore if we are the one who sent this (via isSavingRef)
                     if (isSavingRef.current) return;
 
@@ -440,55 +428,19 @@ export function usePersistence() {
 
                 useCanvasStore.getState().setCollaborators(flattened);
             })
-            .subscribe(async (status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('REALTIME: Subscribed to channel');
-                    const me = useCanvasStore.getState().me;
-                    if (me) {
-                        try {
-                            await channel.track(me);
-                            console.log('REALTIME: Initial presence tracked');
-                        } catch (e) {
-                            console.error('REALTIME: Failed to track presence', e);
-                        }
-                    }
-                } else {
-                    console.log('REALTIME: Subscription status:', status);
-                }
-            });
+            .subscribe();
 
         return () => {
-            console.log('REALTIME: Cleaning up channel');
             client.removeChannel(channel);
             channelRef.current = null;
         };
     }, [treeId, loadTree, setNodes, setEdges]);
 
-    // Separate effect for Presence Tracking (Me) - updates when 'me' changes or ref connects
+    // Separate effect for Presence Tracking (Me)
     useEffect(() => {
         const channel = channelRef.current;
-        const me = useCanvasStore.getState().me;
-
-        // Only track if channel is actually joined (we can check state or just try/catch)
-        // Note: channel.track() waits for join implicitly or fails. 
-        // We'll rely on the fact that if this runs, we might be subscribed.
-        // It's safer to re-track only if we are definitely connected.
-
         if (channel && me) {
-            // Check if the channel is in a 'joined' state if possible, or just attempt track
-            // Supabase JS v2 channel state isn't always exposed simply, but we can try.
-            // We use a small timeout to let subscription settle if this mounts fast.
-            setTimeout(async () => {
-                try {
-                    // Only track if not already closed
-                    if (channel.state === 'joined' || channel.state === 'joining') {
-                        await channel.track(me);
-                    }
-                } catch (e) {
-                    // Ignore errors if not ready
-                    console.warn('REALTIME: Retrying track...', e);
-                }
-            }, 1000);
+            channel.track(me);
         }
     }, [me, treeId]);
 
