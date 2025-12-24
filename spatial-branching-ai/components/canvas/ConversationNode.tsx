@@ -190,13 +190,18 @@ function ConversationNodeComponent(props: NodeProps) {
                     <div
                         ref={contentRef}
                         onMouseUp={handleMouseUp}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            selectNode(id);
+                            if (isUser) setIsEditing(true);
+                        }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
                             'text-sm leading-relaxed whitespace-pre-wrap select-text cursor-text pb-6',
                             !nodeData.content && 'text-muted-foreground italic'
                         )}
                     >
-                        {nodeData.content || (isUser ? 'Double-click to edit...' : 'Generating...')}
+                        {nodeData.content || (isUser ? 'Click to type...' : 'Generating...')}
                     </div>
                 )}
 

@@ -179,6 +179,7 @@ function Canvas() {
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 fitView
+                defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
                 snapToGrid
                 snapGrid={[20, 20]}
                 minZoom={0.1}
@@ -289,7 +290,22 @@ function Canvas() {
                             variant="outline"
                             className="gap-2"
                             onClick={() => {
-                                createRootNode({ x: 0, y: 0 });
+                                // Calculate position in the top third of the viewport
+                                const viewport = reactFlowWrapper.current?.getBoundingClientRect();
+                                if (viewport) {
+                                    // Get the flow position for the horizontal center and vertical top-third
+                                    const position = screenToFlowPosition({
+                                        x: viewport.left + viewport.width / 2,
+                                        y: viewport.top + viewport.height / 4, // 1/4th down for 'higher third' feel
+                                    });
+                                    // Adjust for node width/height roughly (assuming ~300x150)
+                                    createRootNode({
+                                        x: position.x - 150,
+                                        y: position.y - 75
+                                    });
+                                } else {
+                                    createRootNode({ x: 0, y: 0 });
+                                }
                             }}
                         >
                             <Plus className="h-4 w-4" />
