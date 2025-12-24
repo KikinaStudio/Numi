@@ -345,87 +345,49 @@ function Canvas() {
                             size="sm"
                             variant="ghost"
                             className="gap-2"
-                            onClick={() => {
-                                clearCanvas();
-                                // Remove treeId from URL to prevent auto-reloading the old tree
-                                const url = new URL(window.location.href);
-                                url.searchParams.delete('treeId');
-                                window.history.pushState({}, '', url);
-                            }}
-                            title="Start a new conversation"
-                        >
-                            <FilePlus className="h-4 w-4" />
-                            New
-                        </Button>
-                        <div className="w-px h-6 bg-border" />
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-2"
                             onClick={() => setShowSettings(true)}
                             title="Settings (API Keys & Models)"
                         >
                             <Settings className="h-4 w-4" />
+                            Settings
                         </Button>
                         <div className="w-px h-6 bg-border" />
                         <Button
                             size="sm"
                             variant="ghost"
                             className="gap-2"
-                            onClick={() => setShowTreeList(true)}
-                        >
-                            <FolderOpen className="h-4 w-4" />
-                            Open
-                        </Button>
-                        <div className="w-px h-6 bg-border" />
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
                             onClick={handleShare}
-                            disabled={!treeId}
-                            title="Share this conversation"
+                            title="Share Link"
                         >
                             <Share2 className="h-4 w-4" />
                             Share
                         </Button>
-                        <div className="w-px h-6 bg-border" />
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-2"
-                            onClick={() => {
-                                // Position in upper third (approximate coordinates)
-                                createRootNode({ x: 200, y: 100 });
-                            }}
-                        >
-                            <Plus className="h-4 w-4" />
-                            New Root
-                        </Button>
                     </div>
                 </Panel>
-            </ReactFlow>
+            </ReactFlow >
 
             {/* Context Menu */}
-            {contextMenu && (
-                <NodeContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    nodeId={contextMenu.nodeId}
-                    nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
-                    hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
-                    selectedText={textSelection?.text}
-                    onCreateBranch={handleCreateBranch}
-                    onRegenerate={handleRegenerate}
-                    onCopy={handleCopy}
-                    onDelete={handleDelete}
-                    onClose={handleCloseContextMenu}
-                />
-            )}
+            {
+                contextMenu && (
+                    <NodeContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        nodeId={contextMenu.nodeId}
+                        nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
+                        hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
+                        selectedText={textSelection?.text}
+                        onCreateBranch={handleCreateBranch}
+                        onRegenerate={handleRegenerate}
+                        onCopy={handleCopy}
+                        onDelete={handleDelete}
+                        onClose={handleCloseContextMenu}
+                    />
+                )
+            }
 
             <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
             <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-        </div>
+        </div >
     );
 }
 
