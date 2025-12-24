@@ -9,6 +9,7 @@ import { useChat } from '@/lib/hooks/useChat';
 import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, BookOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { PERSONAS } from '@/lib/config/personas';
 import {
     Select,
@@ -192,12 +193,14 @@ function ConversationNodeComponent(props: NodeProps) {
             </div>
 
             {nodeData.branchContext && (
-                <div className="px-4 py-2 bg-muted/30 border-b border-muted/50">
-                    <p className="text-xs text-muted-foreground italic">
-                        &quot;{nodeData.branchContext.length > 60
-                            ? nodeData.branchContext.substring(0, 60) + '...'
-                            : nodeData.branchContext}&quot;
-                    </p>
+                <div className="px-4 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-start gap-2 group transition-colors hover:bg-blue-500/10">
+                    <BookOpen className="h-4 w-4 text-blue-400 mt-1 shrink-0" />
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-blue-500/50">Context</span>
+                        <p className="text-[15px] text-foreground leading-relaxed font-medium">
+                            {nodeData.branchContext}
+                        </p>
+                    </div>
                 </div>
             )}
 
@@ -233,8 +236,28 @@ function ConversationNodeComponent(props: NodeProps) {
                         } : {}}
                     >
                         {nodeData.content ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {nodeData.content}
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw]}
+                                components={{
+                                    p: ({ node, ...props }) => <p {...props} className="mb-4 last:mb-0" />,
+                                }}
+                            >
+                                {(() => {
+                                    let content = nodeData.content;
+                                    const branchedTexts = (nodeData as any).branchedTexts || [];
+
+                                    // Sort by length descending to avoid partial matches
+                                    const sortedBranches = [...branchedTexts].sort((a, b) => b.length - a.length);
+
+                                    sortedBranches.forEach(branch => {
+                                        // Escaping regex but keeping it simple for now as branchContext is usually clean text
+                                        const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                        const regex = new RegExp(`(${escaped})`, 'g');
+                                        content = content.replace(regex, '<mark class="branched-highlight">$1</mark>');
+                                    });
+                                    return content;
+                                })()}
                             </ReactMarkdown>
                         ) : (
                             isUser ? 'Click to type...' : 'Generating...'

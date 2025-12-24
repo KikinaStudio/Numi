@@ -65,14 +65,27 @@ function Canvas() {
         treeId,
     } = useCanvasStore();
 
-    // Compute hasChildren for nodes to enable compact view
-    const nodesWithChildStatus = useMemo(() => {
+    // Compute hasChildren and branchedTexts for nodes to enable compact view and highlighting
+    const nodesWithMetadata = useMemo(() => {
         const parentIds = new Set(edges.map(e => e.source));
+
+        // Group branchContexts by parentId
+        const branchContextsMap = new Map<string, string[]>();
+        edges.forEach(edge => {
+            const childNode = nodes.find(n => n.id === edge.target);
+            if (childNode?.data?.branchContext) {
+                const contexts = branchContextsMap.get(edge.source) || [];
+                contexts.push(childNode.data.branchContext);
+                branchContextsMap.set(edge.source, contexts);
+            }
+        });
+
         return nodes.map(n => ({
             ...n,
             data: {
                 ...n.data,
-                hasChildren: parentIds.has(n.id)
+                hasChildren: parentIds.has(n.id),
+                branchedTexts: branchContextsMap.get(n.id) || []
             }
         }));
     }, [nodes, edges]);
@@ -229,7 +242,7 @@ function Canvas() {
     return (
         <div ref={reactFlowWrapper} className="w-full h-full">
             <ReactFlow
-                nodes={nodesWithChildStatus}
+                nodes={nodesWithMetadata}
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
