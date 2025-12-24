@@ -13,6 +13,8 @@ interface Message {
 interface ChatRequestBody {
     messages: Message[];
     model?: string;
+    apiKey?: string;
+    provider?: string;
     stream?: boolean;
     temperature?: number;
     maxTokens?: number;
@@ -21,7 +23,7 @@ interface ChatRequestBody {
 export async function POST(request: NextRequest) {
     try {
         const body: ChatRequestBody = await request.json();
-        const { messages, model = 'openai/gpt-4o-mini', stream = true, temperature = 0.7, maxTokens } = body;
+        const { messages, model = 'openai/gpt-4o-mini', stream = true, temperature = 0.7, maxTokens, provider } = body;
 
         // Validate messages
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -31,30 +33,60 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get API key from environment
-        const apiKey = process.env.OPENROUTER_API_KEY;
+        // Get API key from body or environment
+        // Logic: 
+        // 1. Check body (User's custom key) -> 2. Check env (Server default)
+        // Note: For 'openai' provider, we need an OpenAI key. For 'openrouter', we need OpenRouter key.
+        let apiKey = body.apiKey;
+
+        // If no custom key provided, fall back to server default (OpenRouter)
+        if (!apiKey) {
+            apiKey = process.env.OPENROUTER_API_KEY;
+        }
 
         if (!apiKey) {
+            // If we are trying to use OpenAI direct but no key, error out
+            if (provider === 'openai') {
+                return NextResponse.json(
+                    { error: 'OpenAI API key required. Please set it in Settings.' },
+                    { status: 401 }
+                );
+            }
+            // For OpenRouter fallback
             return NextResponse.json(
-                { error: 'OpenRouter API key not configured. Please set OPENROUTER_API_KEY in your environment.' },
+                { error: 'OpenRouter API key not configured. Please set OPENROUTER_API_KEY in environment or Settings.' },
                 { status: 500 }
             );
         }
 
-        // Create OpenAI client configured for OpenRouter
+        // Determine Base URL and Model Name
+        let baseURL = 'https://openrouter.ai/api/v1';
+        let effectiveModel = model;
+        const defaultHeaders: Record<string, string> = {
+            'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+            'X-Title': 'Spatial Branching AI',
+        };
+
+        if (provider === 'openai') {
+            baseURL = 'https://api.openai.com/v1';
+            // OpenAI expects 'gpt-4o', not 'openai/gpt-4o'
+            effectiveModel = model.replace('openai/', '');
+            // Remove OpenRouter specific headers to avoid confusion (optional but good practice)
+            delete defaultHeaders['HTTP-Referer'];
+            delete defaultHeaders['X-Title'];
+        }
+
+        // Create OpenAI client
         const openai = new OpenAI({
-            baseURL: 'https://openrouter.ai/api/v1',
+            baseURL,
             apiKey,
-            defaultHeaders: {
-                'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-                'X-Title': 'Spatial Branching AI',
-            },
+            defaultHeaders,
         });
 
         if (stream) {
             // Streaming response
             const streamResponse = await openai.chat.completions.create({
-                model,
+                model: effectiveModel,
                 messages,
                 temperature,
                 max_tokens: maxTokens,

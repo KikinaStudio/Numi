@@ -1,13 +1,18 @@
 import { useCallback, useRef } from 'react';
 import { useCanvasStore } from '@/lib/stores/canvas-store';
 
+import { useSettingsStore, MODELS } from '@/lib/stores/settings-store';
+
 interface UseChatOptions {
     model?: string;
     temperature?: number;
 }
 
 export function useChat(options: UseChatOptions = {}) {
-    const { model = 'openai/gpt-4o-mini', temperature = 0.7 } = options;
+    // Get settings from store
+    const { defaultModel, apiKeys } = useSettingsStore();
+
+    const { temperature = 0.7 } = options;
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const { getConversationContext, updateNode } = useCanvasStore();
@@ -22,6 +27,13 @@ export function useChat(options: UseChatOptions = {}) {
 
     // Generate response for a node
     const generate = useCallback(async (nodeId: string): Promise<string> => {
+        // Determine effective model and key
+        const activeModel = options.model || defaultModel;
+        const provider = MODELS.find(m => m.id === activeModel)?.provider || 'openrouter';
+
+        // For now, route everything except direct OpenAI through OpenRouter
+        const apiKey = provider === 'openai' ? apiKeys.openai : apiKeys.openrouter;
+
         // Abort any previous request
         abort();
 
@@ -54,7 +66,9 @@ export function useChat(options: UseChatOptions = {}) {
                 },
                 body: JSON.stringify({
                     messages: validMessages,
-                    model,
+                    model: activeModel,
+                    apiKey,
+                    provider,
                     temperature,
                     stream: true,
                 }),
@@ -116,7 +130,7 @@ export function useChat(options: UseChatOptions = {}) {
             });
             throw error;
         }
-    }, [abort, getConversationContext, model, temperature, updateNode]);
+    }, [abort, getConversationContext, defaultModel, apiKeys, temperature, updateNode]);
 
     return {
         generate,

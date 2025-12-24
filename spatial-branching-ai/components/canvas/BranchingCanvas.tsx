@@ -17,10 +17,11 @@ import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings } from 'lucide-react';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
+import { SettingsDialog } from '@/components/ui/settings-dialog';
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
@@ -61,6 +62,7 @@ function Canvas() {
 
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [showTreeList, setShowTreeList] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     // AI Chat hook for generating responses
     const { generate } = useChat();
@@ -265,6 +267,16 @@ function Canvas() {
                             size="sm"
                             variant="ghost"
                             className="gap-2"
+                            onClick={() => setShowSettings(true)}
+                            title="Settings (API Keys & Models)"
+                        >
+                            <Settings className="h-4 w-4" />
+                        </Button>
+                        <div className="w-px h-6 bg-border" />
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-2"
                             onClick={() => setShowTreeList(true)}
                         >
                             <FolderOpen className="h-4 w-4" />
@@ -304,6 +316,7 @@ function Canvas() {
             )}
 
             <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
+            <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
         </div>
     );
 }
