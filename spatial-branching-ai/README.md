@@ -1,22 +1,27 @@
 # Spatial Branching AI 🧠
 
-An intelligent infinite canvas for non-linear AI conversations. Visualize your thoughts, branch off interesting points, and collaborate with AI in a spatial environment.
+An intelligent infinite canvas for non-linear AI conversations. Visualize your thoughts, branch off interesting points, and collaborate in a shared spatial environment.
 
-![Project Preview](./public/preview.png)
+## 🎯 Project Objective
 
-## 🚀 Build 1 - Foundation & Persistence
+The goal of **Spatial Branching AI** is to break the linear constraints of traditional chat interfaces. By treating conversations as a dynamic, branching tree on an infinite canvas, users can explore multiple ideas simultaneously without losing context.
 
-This is the first stable release of the Spatial Branching AI. It features a fully functional infinite canvas with deep branching, real-time AI generation, and robust cloud persistence using Supabase.
+Key objectives include:
 
-### ✨ Key Features
+- **Spatial Thinking**: Mapping out complex ideas visually to see connections.
+- **Deep Contextual Branching**: Enabling the creation of sub-discussions from specific sentences or words.
+- **Collaborative Brainstorming**: A shared space where teams and AI can co-create in real-time.
+- **Document-Grade Clarity**: Rendering AI insights with the beauty and hierarchy of a Notion document.
+
+## ✨ Key Features
 
 - **Infinite Canvas**: Drag, zoom, and pan across a limitless workspace using [React Flow](https://reactflow.dev/).
-- **AI Branching**: Create new conversation branches from any node.
-- **Deep Context**: Select specific text within a message to "Branch from Selection", passing that context to the AI.
-- **Interactive UI**: Glassmorphic design with role-based styling (User vs Assistant).
-- **Auto-Persistence**: Seamlessly saves your conversation trees to Supabase in real-time.
-- **Robust Sync**: Handles network issues and race conditions with smart locking and optimistic updates.
-- **Streaming Responses**: Real-time token streaming via OpenRouter API.
+- **Real-Time Collaboration**: Share your tree with a simple link and brainstorm together with live sync and presence indicators.
+- **Notion-Style Rendering**: AI responses are beautifully formatted with headers, lists, and spacing designed for readability.
+- **Selection-Based Branching**: Highlight any text to immediately branch a new conversation path from that specific context.
+- **Instant Editing**: Single-click to edit user nodes; actions appear right at your cursor on text selection.
+- **BYOK (Bring Your Own Key)**: Securely use your own API keys for OpenAI, Anthropic, or OpenRouter.
+- **Persistent Memory**: Your trees are automatically saved to Supabase and can be resumed at any time via a shareable ID.
 
 ## 🛠️ Tech Stack
 
@@ -66,14 +71,13 @@ This is the first stable release of the Spatial Branching AI. It features a full
 
 ## 🎮 How to Use
 
-1. **Start New**: Click the **New Tree** icon (bottom left) to clear the canvas.
-2. **Add Node**: Click "New Root" or press the **New** button to start a conversation.
-3. **Chat**: Type your prompt in the Blue (User) node.
-4. **Generate**: Click the **Generate Branch** button (Send icon) to get an AI response.
-    - *Note: "Enter" to submit is disabled to prevent accidental sends.*
-5. **Branch Deeply**:
-    - **Right-click** any node to branch.
-    - **Select text** inside a node to see the "Branch here" floating button.
+1. **New Tree**: Click **New Root** to start a fresh discussion.
+2. **Chat**: Type in the Blue node and click the **Arrow** to send.
+3. **Branch**:
+   - **Context Menu**: Right-click any node to branch.
+   - **Selection**: Select any text to immediately trigger the branch menu at your cursor.
+4. **Collaborate**: Click the **Share** button (bottom bar) to copy the link. Open it in another window to see real-time updates!
+5. **Settings**: Click the **Gear** icon to enter your API keys and select models.
 
 ## 🐛 Build 1 Fixes (Changelog)
 
@@ -86,10 +90,10 @@ This is the first stable release of the Spatial Branching AI. It features a full
 ## 🔜 Roadmap
 
 - [ ] **Multi-Modal**: Support for Images and Video nodes.
-- [ ] **Collaboration**: Real-time multiplayer editing.
 - [ ] **Vector Search**: Semantic search across your conversation trees.
-- [ ] **Export**: Export trees to Markdown or JSON.
+- [ ] **Export**: Export trees to Markdown or PDF.
+- [ ] **Templates**: Pre-defined brainstorming frameworks.
 
 ---
 
-*Built by [Your Name/Antigravity]*
+*Built with passion by Antigravity*
