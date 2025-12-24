@@ -18,7 +18,7 @@ import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick } from 'lucide-react';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
@@ -271,6 +271,23 @@ function Canvas() {
                     pannable
                     zoomable
                 />
+
+                {/* Empty State Prompt */}
+                {nodes.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                        <div className="flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-500">
+                            <div className="bg-primary/10 p-4 rounded-full mb-4 ring-1 ring-primary/20 shadow-lg backdrop-blur-sm">
+                                <MousePointerClick className="h-8 w-8 text-primary animate-pulse" />
+                            </div>
+                            <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60 mb-2">
+                                Start Thinking
+                            </h3>
+                            <p className="text-muted-foreground text-sm max-w-[200px]">
+                                Double-click anywhere on the canvas to begin a new conversation tree.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Tree Name Panel */}
                 <Panel position="top-left" className="m-4">
