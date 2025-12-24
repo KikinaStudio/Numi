@@ -1,0 +1,249 @@
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+import {
+    Node,
+    Edge,
+    XYPosition,
+    applyNodeChanges,
+    applyEdgeChanges,
+    NodeChange,
+    EdgeChange,
+    Connection,
+    addEdge,
+} from '@xyflow/react';
+
+// Custom node data interface for conversation nodes
+export interface ConversationNodeData extends Record<string, unknown> {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    branchContext?: string; // Selected text that triggered this branch
+    isGenerating?: boolean;
+    modelConfig?: {
+        model?: string;
+        temperature?: number;
+    };
+}
+
+// Extended node type for our conversation nodes
+export type ConversationNode = Node<ConversationNodeData, 'conversation'>;
+
+// Text selection state for deep branching
+export interface TextSelection {
+    nodeId: string;
+    text: string;
+    range: [number, number];
+}
+
+// Store interface
+interface CanvasState {
+    // State
+    nodes: ConversationNode[];
+    edges: Edge[];
+    selectedNodeId: string | null;
+    textSelection: TextSelection | null;
+    isConnecting: boolean;
+
+    // Actions
+    setNodes: (nodes: ConversationNode[]) => void;
+    setEdges: (edges: Edge[]) => void;
+    onNodesChange: (changes: NodeChange[]) => void;
+    onEdgesChange: (changes: EdgeChange[]) => void;
+    onConnect: (connection: Connection) => void;
+
+    // Node operations
+    addNode: (node: ConversationNode) => void;
+    updateNode: (id: string, data: Partial<ConversationNodeData>) => void;
+    updateNodePosition: (id: string, position: XYPosition) => void;
+    deleteNode: (id: string) => void;
+
+    // Selection
+    selectNode: (id: string | null) => void;
+    setTextSelection: (selection: TextSelection | null) => void;
+
+    // Branching
+    createRootNode: (position: XYPosition, content?: string) => string;
+    createChildNode: (parentId: string, position: XYPosition, branchContext?: string) => string;
+
+    // Utilities
+    getAncestorNodes: (nodeId: string) => ConversationNode[];
+    getConversationContext: (nodeId: string) => Array<{ role: string; content: string }>;
+}
+
+// Generate unique IDs
+const generateId = () => `node-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+export const useCanvasStore = create<CanvasState>()(
+    immer((set, get) => ({
+        // Initial state
+        nodes: [],
+        edges: [],
+        selectedNodeId: null,
+        textSelection: null,
+        isConnecting: false,
+
+        // Setters
+        setNodes: (nodes) => set({ nodes }),
+        setEdges: (edges) => set({ edges }),
+
+        // React Flow change handlers (optimized)
+        onNodesChange: (changes) => {
+            set((state) => {
+                state.nodes = applyNodeChanges(changes, state.nodes) as ConversationNode[];
+            });
+        },
+
+        onEdgesChange: (changes) => {
+            set((state) => {
+                state.edges = applyEdgeChanges(changes, state.edges);
+            });
+        },
+
+        onConnect: (connection) => {
+            set((state) => {
+                state.edges = addEdge(
+                    {
+                        ...connection,
+                        id: `edge-${connection.source}-${connection.target}`,
+                        type: 'smoothstep',
+                        animated: true,
+                    },
+                    state.edges
+                );
+            });
+        },
+
+        // Node operations
+        addNode: (node) => {
+            set((state) => {
+                state.nodes.push(node);
+            });
+        },
+
+        updateNode: (id, data) => {
+            set((state) => {
+                const node = state.nodes.find((n) => n.id === id);
+                if (node) {
+                    node.data = { ...node.data, ...data };
+                }
+            });
+        },
+
+        updateNodePosition: (id, position) => {
+            set((state) => {
+                const node = state.nodes.find((n) => n.id === id);
+                if (node) {
+                    node.position = position;
+                }
+            });
+        },
+
+        deleteNode: (id) => {
+            set((state) => {
+                state.nodes = state.nodes.filter((n) => n.id !== id);
+                state.edges = state.edges.filter((e) => e.source !== id && e.target !== id);
+            });
+        },
+
+        // Selection
+        selectNode: (id) => set({ selectedNodeId: id }),
+        setTextSelection: (selection) => set({ textSelection: selection }),
+
+        // Branching operations
+        createRootNode: (position, content = '') => {
+            const id = generateId();
+            const newNode: ConversationNode = {
+                id,
+                type: 'conversation',
+                position,
+                data: {
+                    role: 'user',
+                    content,
+                },
+            };
+
+            set((state) => {
+                state.nodes.push(newNode);
+            });
+
+            return id;
+        },
+
+        createChildNode: (parentId, position, branchContext) => {
+            const id = generateId();
+            const parent = get().nodes.find((n) => n.id === parentId);
+
+            // Determine role based on parent
+            const role: 'user' | 'assistant' = parent?.data.role === 'user' ? 'assistant' : 'user';
+
+            const newNode: ConversationNode = {
+                id,
+                type: 'conversation',
+                position,
+                data: {
+                    role,
+                    content: '',
+                    branchContext,
+                    isGenerating: role === 'assistant',
+                },
+            };
+
+            const newEdge: Edge = {
+                id: `edge-${parentId}-${id}`,
+                source: parentId,
+                target: id,
+                type: 'smoothstep',
+                animated: true,
+            };
+
+            set((state) => {
+                state.nodes.push(newNode);
+                state.edges.push(newEdge);
+            });
+
+            return id;
+        },
+
+        // Get all ancestor nodes for building conversation context
+        getAncestorNodes: (nodeId) => {
+            const { nodes, edges } = get();
+            const ancestors: ConversationNode[] = [];
+            let currentId = nodeId;
+
+            // Find edge where current node is target
+            while (true) {
+                const parentEdge = edges.find((e) => e.target === currentId);
+                if (!parentEdge) break;
+
+                const parentNode = nodes.find((n) => n.id === parentEdge.source);
+                if (!parentNode) break;
+
+                ancestors.unshift(parentNode);
+                currentId = parentNode.id;
+            }
+
+            return ancestors;
+        },
+
+        // Build conversation context for LLM calls
+        getConversationContext: (nodeId) => {
+            const { nodes } = get();
+            const ancestors = get().getAncestorNodes(nodeId);
+            const currentNode = nodes.find((n) => n.id === nodeId);
+
+            const allNodes = currentNode ? [...ancestors, currentNode] : ancestors;
+
+            return allNodes.map((node) => ({
+                role: node.data.role,
+                content: node.data.branchContext
+                    ? `[Context: "${node.data.branchContext}"]\n${node.data.content}`
+                    : node.data.content,
+            }));
+        },
+    }))
+);
+
+// Selector hooks for optimized re-renders
+export const useNodes = () => useCanvasStore((state) => state.nodes);
+export const useEdges = () => useCanvasStore((state) => state.edges);
+export const useSelectedNodeId = () => useCanvasStore((state) => state.selectedNodeId);
+export const useTextSelection = () => useCanvasStore((state) => state.textSelection);
