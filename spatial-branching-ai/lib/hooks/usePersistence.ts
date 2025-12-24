@@ -88,9 +88,10 @@ export function usePersistence() {
 
         try {
             const currentState = serializeState(nodes, edges);
-            // If nothing changed since last save (and we aren't creating a new tree), skip
-            if (treeId && currentState === lastSavedRef.current) {
-                setSyncStatus('synced');
+
+            // Only skip if explicitly synced and state matches
+            // If status is 'unsaved', we MUST save even if state looks same (to fix stuck UI)
+            if (treeId && currentState === lastSavedRef.current && syncStatus === 'synced') {
                 isSavingRef.current = false;
                 return;
             }
@@ -253,6 +254,9 @@ export function usePersistence() {
             // 5. Load into Store
             loadGraph(flowNodes, flowEdges, tree.id, tree.name);
 
+            // 6. Initialize lastSavedRef to prevent immediate re-save
+            lastSavedRef.current = serializeState(flowNodes, flowEdges);
+
         } catch (error: any) {
             console.error('Failed to load tree:', error);
             setSyncStatus('error', `Load failed: ${error.message || 'Unknown error'}`);
@@ -299,13 +303,8 @@ export function usePersistence() {
         if (!treeId) return;
 
         // Presence & Realtime Channel
-        const channel = client.channel(`tree:${treeId}`, {
-            config: {
-                presence: {
-                    key: treeId,
-                },
-            },
-        });
+        // Presence & Realtime Channel
+        const channel = client.channel(`tree:${treeId}`);
         channelRef.current = channel;
 
         // 1. Listen for Database Changes
