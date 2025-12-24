@@ -193,7 +193,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         defaultValue={nodeData.content}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        className="w-full min-h-[80px] bg-transparent border-none outline-none resize-none text-sm pb-8"
+                        className="w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] pb-12"
                         placeholder="Type your message..."
                     />
                 ) : (
@@ -207,7 +207,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text pb-6',
+                            'prose-notion select-text cursor-text pb-12 min-h-[100px]',
                             !nodeData.content && 'text-muted-foreground italic'
                         )}
                     >
@@ -222,14 +222,13 @@ function ConversationNodeComponent(props: NodeProps) {
                 )}
 
                 {/* Generate Button for User Nodes */}
-                {/* Generate Button for User Nodes */}
-                {isUser && (isEditing || nodeData.content.trim().length > 0) && (
+                {isUser && (isEditing || nodeData.content.trim().length > 0 || selected) && (
                     <div className="absolute bottom-2 right-2 flex items-center gap-2 justify-end z-10 transition-opacity">
                         <Select
                             value={nodeData.selectedPersonaId || 'standard'}
                             onValueChange={(value) => updateNode(id, { selectedPersonaId: value })}
                         >
-                            <SelectTrigger className="h-7 w-[130px] text-xs bg-background/80 border-input shadow-none backdrop-blur-sm">
+                            <SelectTrigger className="h-7 w-[130px] text-xs bg-background border-input shadow-sm backdrop-blur-sm animate-in fade-in zoom-in duration-200">
                                 <SelectValue placeholder="Agent" />
                             </SelectTrigger>
                             <SelectContent className='dark:bg-[#1a1a1a]'>
