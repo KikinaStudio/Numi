@@ -428,19 +428,55 @@ export function usePersistence() {
 
                 useCanvasStore.getState().setCollaborators(flattened);
             })
-            .subscribe();
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('REALTIME: Subscribed to channel');
+                    const me = useCanvasStore.getState().me;
+                    if (me) {
+                        try {
+                            await channel.track(me);
+                            console.log('REALTIME: Initial presence tracked');
+                        } catch (e) {
+                            console.error('REALTIME: Failed to track presence', e);
+                        }
+                    }
+                } else {
+                    console.log('REALTIME: Subscription status:', status);
+                }
+            });
 
         return () => {
+            console.log('REALTIME: Cleaning up channel');
             client.removeChannel(channel);
             channelRef.current = null;
         };
     }, [treeId, loadTree, setNodes, setEdges]);
 
-    // Separate effect for Presence Tracking (Me)
+    // Separate effect for Presence Tracking (Me) - updates when 'me' changes or ref connects
     useEffect(() => {
         const channel = channelRef.current;
+        const me = useCanvasStore.getState().me;
+
+        // Only track if channel is actually joined (we can check state or just try/catch)
+        // Note: channel.track() waits for join implicitly or fails. 
+        // We'll rely on the fact that if this runs, we might be subscribed.
+        // It's safer to re-track only if we are definitely connected.
+
         if (channel && me) {
-            channel.track(me);
+            // Check if the channel is in a 'joined' state if possible, or just attempt track
+            // Supabase JS v2 channel state isn't always exposed simply, but we can try.
+            // We use a small timeout to let subscription settle if this mounts fast.
+            setTimeout(async () => {
+                try {
+                    // Only track if not already closed
+                    if (channel.state === 'joined' || channel.state === 'joining') {
+                        await channel.track(me);
+                    }
+                } catch (e) {
+                    // Ignore errors if not ready
+                    console.warn('REALTIME: Retrying track...', e);
+                }
+            }, 1000);
         }
     }, [me, treeId]);
 
