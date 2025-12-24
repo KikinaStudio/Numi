@@ -256,7 +256,7 @@ function Canvas() {
                 {/* Sync Status Panel */}
                 <Panel position="top-right" className="mt-4 mr-4">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
-                        {syncStatus === 'saving' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {syncStatus === 'saving' && <Cloud className="h-4 w-4 animate-bounce text-primary" />}
                         {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
                         {syncStatus === 'error' && (
                             <div title={syncError || 'Sync Error'}>

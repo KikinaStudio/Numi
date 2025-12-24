@@ -57,8 +57,9 @@ export function usePersistence() {
     const channelRef = useRef<any>(null);
 
     // Serialize current state to detect changes
-    const serializeState = (nodes: ConversationNode[], edges: Edge[]) => {
+    const serializeState = (nodes: ConversationNode[], edges: Edge[], name: string) => {
         return JSON.stringify({
+            name,
             nodes: nodes.map(n => ({
                 id: n.id,
                 position: n.position,
@@ -87,7 +88,7 @@ export function usePersistence() {
         isSavingRef.current = true;
 
         try {
-            const currentState = serializeState(nodes, edges);
+            const currentState = serializeState(nodes, edges, treeName);
             // If nothing changed since last save (and we aren't creating a new tree), skip
             if (treeId && currentState === lastSavedRef.current) {
                 setSyncStatus('synced');
