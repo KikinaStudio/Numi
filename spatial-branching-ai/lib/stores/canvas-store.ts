@@ -84,13 +84,13 @@ interface CanvasState {
 // Generate unique IDs (Using standard UUID for Supabase compatibility)
 const generateId = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID().toLowerCase();
+        return crypto.randomUUID();
     }
     // Fallback for non-secure contexts or older browsers
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
-    }).toLowerCase();
+    });
 };
 
 export const useCanvasStore = create<CanvasState>()(
@@ -139,7 +139,7 @@ export const useCanvasStore = create<CanvasState>()(
                 state.edges = addEdge(
                     {
                         ...connection,
-                        id: generateId(),
+                        id: `edge-${connection.source}-${connection.target}`,
                         type: 'smoothstep',
                         animated: true,
                     },
@@ -199,7 +199,6 @@ export const useCanvasStore = create<CanvasState>()(
         // Branching operations
         createRootNode: (position, content = '') => {
             const id = generateId();
-            console.log(`[Store] Creating root node: ${id}`);
             const newNode: ConversationNode = {
                 id,
                 type: 'conversation',
@@ -220,7 +219,6 @@ export const useCanvasStore = create<CanvasState>()(
         createChildNode: (parentId, position, branchContext) => {
             const id = generateId();
             const parent = get().nodes.find((n) => n.id === parentId);
-            console.log(`[Store] Creating child node: ${id} (parent: ${parentId})`);
 
             // Determine role based on parent
             const role: 'user' | 'assistant' = parent?.data.role === 'user' ? 'assistant' : 'user';
@@ -238,7 +236,7 @@ export const useCanvasStore = create<CanvasState>()(
             };
 
             const newEdge: Edge = {
-                id: generateId(),
+                id: `edge-${parentId}-${id}`,
                 source: parentId,
                 target: id,
                 type: 'smoothstep',
@@ -246,16 +244,8 @@ export const useCanvasStore = create<CanvasState>()(
             };
 
             set((state) => {
-                // Defensive check: ensure node doesn't already exist
-                if (!state.nodes.find(n => n.id === newNode.id)) {
-                    state.nodes.push(newNode);
-                }
-
-                // Defensive check: ensure edge doesn't already exist
-                if (!state.edges.find(e => e.source === parentId && e.target === id)) {
-                    state.edges.push(newEdge);
-                }
-                console.log(`[Store] Pushed node ${id} and edge ${newEdge.id}`);
+                state.nodes.push(newNode);
+                state.edges.push(newEdge);
             });
 
             return id;
