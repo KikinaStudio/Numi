@@ -45,6 +45,7 @@ interface CanvasState {
 
     // Persistence
     treeId: string | null;
+    treeName: string;
     syncStatus: 'synced' | 'saving' | 'error' | 'unsaved';
 
     // Actions
@@ -59,6 +60,7 @@ interface CanvasState {
     updateNode: (id: string, data: Partial<ConversationNodeData>) => void;
     updateNodePosition: (id: string, position: XYPosition) => void;
     deleteNode: (id: string) => void;
+    clearCanvas: () => void;
 
     // Selection
     selectNode: (id: string | null) => void;
@@ -66,8 +68,9 @@ interface CanvasState {
 
     // Persistence Actions
     setTreeId: (id: string | null) => void;
-    setSyncStatus: (status: 'synced' | 'saving' | 'error' | 'unsaved') => void;
-    loadGraph: (nodes: ConversationNode[], edges: Edge[]) => void;
+    setTreeName: (name: string) => void;
+    setSyncStatus: (status: CanvasState['syncStatus']) => void;
+    loadGraph: (nodes: ConversationNode[], edges: Edge[], treeId: string, treeName?: string) => void;
 
     // Branching
     createRootNode: (position: XYPosition, content?: string) => string;
@@ -78,8 +81,17 @@ interface CanvasState {
     getConversationContext: (nodeId: string) => Array<{ role: string; content: string }>;
 }
 
-// Generate unique IDs
-const generateId = () => `node-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+// Generate unique IDs (Using standard UUID for Supabase compatibility)
+const generateId = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // Fallback for non-secure contexts or older browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
 
 export const useCanvasStore = create<CanvasState>()(
     immer((set, get) => ({
@@ -90,6 +102,7 @@ export const useCanvasStore = create<CanvasState>()(
         textSelection: null,
         isConnecting: false,
         treeId: null,
+        treeName: 'Untitled Conversation',
         syncStatus: 'synced',
 
         // Setters
@@ -98,8 +111,15 @@ export const useCanvasStore = create<CanvasState>()(
 
         // Persistence Actions
         setTreeId: (id) => set({ treeId: id }),
+        setTreeName: (name) => set({ treeName: name }),
         setSyncStatus: (status) => set({ syncStatus: status }),
-        loadGraph: (nodes, edges) => set({ nodes, edges, syncStatus: 'synced' }),
+        loadGraph: (nodes, edges, treeId, treeName) => set({
+            nodes,
+            edges,
+            treeId,
+            treeName: treeName || 'Untitled Conversation',
+            syncStatus: 'synced'
+        }),
 
         // React Flow change handlers (optimized)
         onNodesChange: (changes) => {
@@ -119,7 +139,7 @@ export const useCanvasStore = create<CanvasState>()(
                 state.edges = addEdge(
                     {
                         ...connection,
-                        id: `edge-${connection.source}-${connection.target}`,
+                        id: generateId(),
                         type: 'smoothstep',
                         animated: true,
                     },
@@ -157,6 +177,18 @@ export const useCanvasStore = create<CanvasState>()(
             set((state) => {
                 state.nodes = state.nodes.filter((n) => n.id !== id);
                 state.edges = state.edges.filter((e) => e.source !== id && e.target !== id);
+            });
+        },
+
+        clearCanvas: () => {
+            set({
+                nodes: [],
+                edges: [],
+                treeId: null,
+                treeName: 'Untitled Conversation',
+                selectedNodeId: null,
+                textSelection: null,
+                syncStatus: 'synced',
             });
         },
 
@@ -204,7 +236,7 @@ export const useCanvasStore = create<CanvasState>()(
             };
 
             const newEdge: Edge = {
-                id: `edge-${parentId}-${id}`,
+                id: generateId(),
                 source: parentId,
                 target: id,
                 type: 'smoothstep',

@@ -7,9 +7,13 @@ interface NodeContextMenuProps {
     x: number;
     y: number;
     nodeId: string;
+    nodeRole?: string; // Add role
     hasTextSelection: boolean;
     selectedText?: string;
     onCreateBranch: () => void;
+    onRegenerate: () => void;
+    onCopy: () => void;
+    onDelete: () => void;
     onClose: () => void;
 }
 
@@ -17,9 +21,13 @@ const NodeContextMenu = memo(({
     x,
     y,
     nodeId,
+    nodeRole,
     hasTextSelection,
     selectedText,
     onCreateBranch,
+    onRegenerate,
+    onCopy,
+    onDelete,
     onClose,
 }: NodeContextMenuProps) => {
     const menuRef = useRef<HTMLDivElement>(null);
@@ -90,21 +98,23 @@ const NodeContextMenu = memo(({
                 <div className="h-px bg-border my-1" />
 
                 {/* Other actions */}
-                <button
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
-                    onClick={() => {
-                        // TODO: Implement regenerate
-                        onClose();
-                    }}
-                >
-                    <RefreshCw className="h-4 w-4 text-yellow-500" />
-                    <span>Regenerate Response</span>
-                </button>
+                {nodeRole === 'assistant' && (
+                    <button
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
+                        onClick={() => {
+                            onRegenerate();
+                            onClose();
+                        }}
+                    >
+                        <RefreshCw className="h-4 w-4 text-emerald-500" />
+                        <span>Regenerate Response</span>
+                    </button>
+                )}
 
                 <button
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
                     onClick={() => {
-                        // TODO: Copy node content
+                        onCopy();
                         onClose();
                     }}
                 >
@@ -117,7 +127,7 @@ const NodeContextMenu = memo(({
                 <button
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-destructive/10 text-destructive transition-colors text-left"
                     onClick={() => {
-                        // TODO: Implement delete
+                        onDelete();
                         onClose();
                     }}
                 >

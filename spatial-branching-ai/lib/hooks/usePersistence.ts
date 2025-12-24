@@ -6,15 +6,18 @@ import { Edge } from '@xyflow/react';
 
 const DEBOUNCE_DELAY = 1000; // 1 second auto-save
 
+// Helper to check if a string is a valid UUID
+const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 export function usePersistence() {
     const {
         nodes,
         edges,
         treeId,
+        treeName,
         setTreeId,
         setSyncStatus,
         loadGraph,
-        syncStatus
     } = useCanvasStore();
 
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -26,8 +29,7 @@ export function usePersistence() {
             nodes: nodes.map(n => ({
                 id: n.id,
                 position: n.position,
-                data: n.data,
-                type: n.type
+                data: n.data
             })),
             edges: edges.map(e => ({
                 id: e.id,
@@ -37,14 +39,8 @@ export function usePersistence() {
         });
     };
 
-    // Save changes to Supabase
     const saveTree = useCallback(async () => {
-        if (!isSupabaseConfigured() || !supabase) {
-            console.warn('Supabase not configured, skipping save');
-            return;
-        }
-
-        setSyncStatus('saving');
+        if (!isSupabaseConfigured() || !supabase) return;
 
         try {
             const currentState = serializeState(nodes, edges);
@@ -54,12 +50,14 @@ export function usePersistence() {
                 return;
             }
 
+            setSyncStatus('saving');
+
             // 1. Ensure Tree Exists
             let currentTreeId = treeId;
             if (!currentTreeId) {
                 const { data: tree, error: treeError } = await supabase
                     .from('trees')
-                    .insert({ name: 'Untitled Conversation' })
+                    .insert({ name: treeName || 'Untitled Conversation' })
                     .select()
                     .single();
 
@@ -69,30 +67,37 @@ export function usePersistence() {
                 currentTreeId = tree.id;
                 setTreeId(currentTreeId);
             } else {
-                // Touch updated_at
+                // Update name and touch updated_at
                 await supabase
                     .from('trees')
-                    .update({ updated_at: new Date().toISOString() })
+                    .update({
+                        name: treeName,
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('id', currentTreeId);
             }
 
             // 2. Upsert Nodes
-            const dbNodes: DbNode[] = nodes.map(node => ({
-                id: node.id,
-                tree_id: currentTreeId!,
-                parent_id: null, // We'd need to calculate this from edges if we want strict hierarchy in DB column, but edge table is enough for graph
-                position_x: node.position.x,
-                position_y: node.position.y,
-                content_type: 'text',
-                data: {
-                    role: node.data.role,
-                    content: node.data.content,
-                    branchContext: node.data.branchContext
-                },
-                model_config: node.data.modelConfig || {},
-                created_at: new Date().toISOString(), // won't override on upsert usually if configured right, but DB defaults handle this
-                updated_at: new Date().toISOString()
-            }));
+            // Identify parent_id for each node from the edges array
+            const dbNodes: DbNode[] = nodes.map(node => {
+                const parentEdge = edges.find(e => e.target === node.id);
+                return {
+                    id: node.id,
+                    tree_id: currentTreeId!,
+                    parent_id: parentEdge ? (isUUID(parentEdge.source) ? parentEdge.source : null) : null,
+                    position_x: node.position.x,
+                    position_y: node.position.y,
+                    content_type: 'text',
+                    data: {
+                        role: node.data.role,
+                        content: node.data.content,
+                        branchContext: node.data.branchContext
+                    },
+                    model_config: node.data.modelConfig || {},
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+            });
 
             if (dbNodes.length > 0) {
                 const { error: nodesError } = await supabase
@@ -100,29 +105,19 @@ export function usePersistence() {
                     .upsert(dbNodes);
                 if (nodesError) throw nodesError;
 
-                // Cleanup deleted nodes
-                const activeNodeIds = dbNodes.map(n => n.id);
-                await supabase
-                    .from('nodes')
-                    .delete()
-                    .eq('tree_id', currentTreeId)
-                    .not('id', 'in', activeNodeIds);
+                // Cleanup deleted nodes (those not in current nodes list)
+                const activeNodeIds = nodes.map(n => n.id).filter(id => isUUID(id));
+                if (activeNodeIds.length > 0) {
+                    await supabase
+                        .from('nodes')
+                        .delete()
+                        .eq('tree_id', currentTreeId)
+                        .not('id', 'in', activeNodeIds);
+                }
             }
 
-            // 3. Upsert Edges
-            const dbEdges: DbEdge[] = edges.map(edge => ({
-                id: edge.id.length < 36 ? undefined : edge.id, // Let DB generate ID if it's a temp react-flow id, OR stick to ensuring we have UUIDs. 
-                // React Flow IDs are often "xy-edge-..." so let's just generate new ones or rely on composite key?
-                // Actually, our schema has UUID PK. 
-                // Simpler: Delete all edges for tree and re-insert. Edges are lightweight.
-                tree_id: currentTreeId!,
-                source_id: edge.source,
-                target_id: edge.target,
-                created_at: new Date().toISOString()
-            })).filter(e => e.id !== undefined) as any;
-            // Issue: maintaining edge IDs is tricky if they are generated by RF as strings.
-            // Strategy: Delete all edges for this tree and re-insert active ones. Safest for graph integrity.
-
+            // 3. Save Edges
+            // First clear existing edges for this tree (simpler than syncing individual edge IDs)
             const { error: deleteEdgesError } = await supabase
                 .from('edges')
                 .delete()
@@ -130,13 +125,14 @@ export function usePersistence() {
 
             if (deleteEdgesError) throw deleteEdgesError;
 
-            // React flow IDs might not be UUIDs, so we shouldn't send them as 'id' to a UUID column.
-            // We'll let Supabase generate UUIDs for edges.
-            const edgesToInsert = edges.map(edge => ({
-                tree_id: currentTreeId,
-                source_id: edge.source,
-                target_id: edge.target
-            }));
+            // Only insert edges if both ends are valid UUIDs (Supabase requirement)
+            const edgesToInsert = edges
+                .filter(edge => isUUID(edge.source) && isUUID(edge.target))
+                .map(edge => ({
+                    tree_id: currentTreeId!,
+                    source_id: edge.source,
+                    target_id: edge.target
+                }));
 
             if (edgesToInsert.length > 0) {
                 const { error: edgesError } = await supabase
@@ -147,42 +143,42 @@ export function usePersistence() {
 
             lastSavedRef.current = currentState;
             setSyncStatus('synced');
-        } catch (error) {
-            console.error('Save failed:', error);
+        } catch (error: any) {
+            console.error('Save failed:', error.message || error);
+            if (error.details) console.error('Details:', error.details);
+            if (error.hint) console.error('Hint:', error.hint);
             setSyncStatus('error');
         }
-    }, [nodes, edges, treeId, setTreeId, setSyncStatus]);
+    }, [nodes, edges, treeId, treeName, setTreeId, setSyncStatus]);
 
-    // Debounced Auto-save
+    // Debounced Auto-save loop
     useEffect(() => {
-        if (nodes.length === 0) return; // Don't save empty state immediately
+        if (nodes.length === 0) return;
 
-        // Clear existing timeout
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
         }
 
-        // Set status to unsaved/saving pending
-        if (syncStatus === 'synced') {
-            // potentially setSyncStatus('unsaved') here
-        }
-
-        timeoutRef.current = setTimeout(() => {
+        const timeout = setTimeout(() => {
             saveTree();
         }, DEBOUNCE_DELAY);
 
-        return () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        };
-    }, [nodes, edges, saveTree]); // Dependency on saveTree which depends on state
+        timeoutRef.current = timeout;
 
-    // Load Tree Function
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, [saveTree, nodes, edges]);
+
     const loadTree = useCallback(async (id: string) => {
-        if (!supabase) return;
-        setSyncStatus('saving'); // reuse loading state or add new one
+        if (!isSupabaseConfigured() || !supabase) return;
 
         try {
-            // Fetch tree
+            setSyncStatus('saving'); // Indicate loading
+
+            // Fetch tree info
             const { data: tree, error: treeError } = await supabase
                 .from('trees')
                 .select('*')
@@ -221,23 +217,22 @@ export function usePersistence() {
             }));
 
             const flowEdges: Edge[] = (dbEdges || []).map(edge => ({
-                id: edge.id, // UUID from DB
+                id: edge.id,
                 source: edge.source_id,
                 target: edge.target_id,
                 type: 'smoothstep',
                 animated: true
             }));
 
-            setTreeId(id);
-            loadGraph(flowNodes, flowEdges);
+            loadGraph(flowNodes, flowEdges, id, tree.name);
             lastSavedRef.current = serializeState(flowNodes, flowEdges);
             setSyncStatus('synced');
 
-        } catch (error) {
-            console.error('Load failed:', error);
+        } catch (error: any) {
+            console.error('Load failed:', error.message || error);
             setSyncStatus('error');
         }
-    }, [setTreeId, loadGraph, setSyncStatus]);
+    }, [loadGraph, setSyncStatus]);
 
     return { saveTree, loadTree };
 }

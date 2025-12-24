@@ -16,7 +16,8 @@ import { useCanvasStore, useNodes, useEdges, ConversationNodeData } from '@/lib/
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import { Button } from '@/components/ui/button';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home } from 'lucide-react';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
@@ -46,6 +47,10 @@ function Canvas() {
         createRootNode,
         createChildNode,
         selectNode,
+        deleteNode,
+        clearCanvas,
+        treeName,
+        setTreeName,
         textSelection,
         setTextSelection,
         syncStatus,
@@ -122,6 +127,31 @@ function Canvas() {
         setContextMenu(null);
     }, []);
 
+    const handleRegenerate = useCallback(async () => {
+        if (!contextMenu) return;
+        setContextMenu(null);
+        try {
+            await generate(contextMenu.nodeId);
+        } catch (error) {
+            console.error('Failed to regenerate response:', error);
+        }
+    }, [contextMenu, generate]);
+
+    const handleCopy = useCallback(() => {
+        if (!contextMenu) return;
+        const node = nodes.find(n => n.id === contextMenu.nodeId);
+        if (node?.data?.content) {
+            navigator.clipboard.writeText(node.data.content);
+        }
+        setContextMenu(null);
+    }, [contextMenu, nodes]);
+
+    const handleDelete = useCallback(() => {
+        if (!contextMenu) return;
+        deleteNode(contextMenu.nodeId);
+        setContextMenu(null);
+    }, [contextMenu, deleteNode]);
+
     // Default edge options for consistent styling  
     const defaultEdgeOptions = useMemo(() => ({
         type: 'smoothstep' as const,
@@ -176,6 +206,21 @@ function Canvas() {
                     zoomable
                 />
 
+                {/* Tree Name Panel */}
+                <Panel position="top-left" className="mt-4 ml-4">
+                    <div className="flex items-center gap-2 p-1 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
+                        <div className="p-2 bg-primary/10 rounded-md">
+                            <Home className="h-4 w-4 text-primary" />
+                        </div>
+                        <Input
+                            value={treeName}
+                            onChange={(e) => setTreeName(e.target.value)}
+                            className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium"
+                            placeholder="Conversation Title"
+                        />
+                    </div>
+                </Panel>
+
                 {/* Sync Status Panel */}
                 <Panel position="top-right" className="mt-4 mr-4">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
@@ -209,6 +254,17 @@ function Canvas() {
                             size="sm"
                             variant="ghost"
                             className="gap-2"
+                            onClick={() => clearCanvas()}
+                            title="Start a new conversation"
+                        >
+                            <FilePlus className="h-4 w-4" />
+                            New
+                        </Button>
+                        <div className="w-px h-6 bg-border" />
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-2"
                             onClick={() => setShowTreeList(true)}
                         >
                             <FolderOpen className="h-4 w-4" />
@@ -236,9 +292,13 @@ function Canvas() {
                     x={contextMenu.x}
                     y={contextMenu.y}
                     nodeId={contextMenu.nodeId}
+                    nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
                     hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
                     selectedText={textSelection?.text}
                     onCreateBranch={handleCreateBranch}
+                    onRegenerate={handleRegenerate}
+                    onCopy={handleCopy}
+                    onDelete={handleDelete}
                     onClose={handleCloseContextMenu}
                 />
             )}
