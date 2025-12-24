@@ -112,7 +112,7 @@ export function usePersistence() {
                         .from('nodes')
                         .delete()
                         .eq('tree_id', currentTreeId)
-                        .not('id', 'in', activeNodeIds);
+                        .filter('id', 'not.in', `(${activeNodeIds.join(',')})`);
                 }
             }
 

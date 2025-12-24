@@ -30,23 +30,22 @@ function ConversationNodeComponent(props: NodeProps) {
     const isAssistant = nodeData.role === 'assistant';
 
     // Handle text selection for deep branching and floating button
-    const handleMouseUp = useCallback(() => {
+    const handleMouseUp = useCallback((e: React.MouseEvent) => {
+        // Stop bubbling so pane click doesn't clear it immediately
+        e.stopPropagation();
+
         const selection = window.getSelection();
         if (selection && selection.toString().trim().length > 0 && contentRef.current) {
             const text = selection.toString();
+            console.log(`[Selection] Text selected: "${text.substring(0, 10)}..."`);
+
             const range = selection.getRangeAt(0);
             const rect = range.getBoundingClientRect();
             const contentRect = contentRef.current.getBoundingClientRect();
 
-            // Calculate position relative to the node content div
-            // Note: The node itself is `relative` positioned. 
-            // We need coordinates relative to the node container. 
-            // contentRef is inside the node container.
-            // Let's assume contentRef touches the top-left of the relevant area or use offset.
-
-            // X: Center of selection relative to content left
+            // Calculate position relative to the node container
+            // We want it centered above the selection
             const x = rect.left - contentRect.left + (rect.width / 2);
-            // Y: Top of selection relative to content top
             const y = rect.top - contentRect.top;
 
             // Update global store for context menu scenarios
@@ -64,14 +63,16 @@ function ConversationNodeComponent(props: NodeProps) {
             // Show floating button
             setBranchButton({
                 show: true,
-                x: x + 16, // Add 16px padding offset if needed, or just x
-                y: y + 16, // Add padding relative to container 
+                x,
+                y,
                 text
             });
-        } else {
-            setBranchButton(prev => ({ ...prev, show: false }));
         }
     }, [id, setTextSelection]);
+
+    const clearBranchButton = useCallback(() => {
+        setBranchButton(prev => ({ ...prev, show: false }));
+    }, []);
 
     const handleBranchHere = useCallback(async () => {
         // Create child node
@@ -126,8 +127,8 @@ function ConversationNodeComponent(props: NodeProps) {
     const handleClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         selectNode(id);
-        setBranchButton(prev => ({ ...prev, show: false }));
-    }, [id, selectNode]);
+        clearBranchButton();
+    }, [id, selectNode, clearBranchButton]);
 
     // Handle content editing - stop propagation to prevent canvas from creating new node
     const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -138,9 +139,16 @@ function ConversationNodeComponent(props: NodeProps) {
     }, [isUser]);
 
     const handleBlur = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
-        setIsEditing(false);
+        // Just sync content on blur, don't close editing immediately to avoid race with buttons
         updateNode(id, { content: e.target.value });
-    }, [id, updateNode]);
+
+        // Small delay before closing to allow buttons to catch clicks
+        setTimeout(() => {
+            // Check if we didn't just refocus elsewhere in the same node
+            setIsEditing(false);
+            clearBranchButton();
+        }, 150);
+    }, [id, updateNode, clearBranchButton]);
 
     const handleSubmit = useCallback(async (content: string) => {
         console.log(`[Submit] Node ${id} submitting content:`, content.substring(0, 20) + '...');
@@ -259,8 +267,9 @@ function ConversationNodeComponent(props: NodeProps) {
                         />
                         <div className="flex justify-end pt-2 border-t border-blue-500/10">
                             <button
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => {
+                                onMouseDown={(e) => {
+                                    e.preventDefault(); // Prevent blur
+                                    console.log(`[MouseDown] Submit button node ${id}`);
                                     if (textareaRef.current) handleSubmit(textareaRef.current.value);
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95"
@@ -303,18 +312,20 @@ function ConversationNodeComponent(props: NodeProps) {
             {/* Floating Branch Button */}
             {branchButton.show && (
                 <div
-                    className="absolute z-50 transform -translate-x-1/2"
+                    className="absolute z-[100] transform -translate-x-1/2 pointer-events-auto"
                     style={{
-                        top: branchButton.y - 10, // 10px above selection
+                        top: branchButton.y - 45, // 45px above selection
                         left: branchButton.x,
                     }}
                 >
                     <button
-                        onClick={(e) => {
+                        onMouseDown={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
+                            console.log(`[Click] Branch Here button clicked`);
                             handleBranchHere();
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-full shadow-lg hover:bg-primary/90 transition-all animate-in fade-in zoom-in-50 duration-200"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-full shadow-lg hover:bg-primary/90 transition-all animate-in fade-in zoom-in-50 duration-200 ring-2 ring-background whitespace-nowrap"
                     >
                         <GitBranch className="h-3 w-3" />
                         Branch here
