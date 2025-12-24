@@ -27,6 +27,7 @@ function ConversationNodeComponent(props: NodeProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     const { updateNode, setTextSelection, selectNode, setContextMenu, createChildNode } = useCanvasStore();
     const { generate } = useChat();
@@ -132,9 +133,13 @@ function ConversationNodeComponent(props: NodeProps) {
         <div
             onClick={handleClick}
             onDoubleClick={(e) => e.stopPropagation()}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             className={cn(
-                'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-200',
-                'hover:shadow-2xl hover:scale-[1.01]',
+                'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out',
+                'hover:shadow-2xl',
+                'w-[450px]',
+                !selected && !isHovered && nodeData.hasChildren && isAssistant && 'w-[250px]',
                 selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
                 isUser && (theme === 'dark'
                     ? 'bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30'
@@ -217,9 +222,9 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text pb-12 min-h-[100px]',
+                            'prose-notion select-text cursor-text pb-12 min-h-[100px] transition-all duration-300',
                             !nodeData.content && 'text-muted-foreground italic',
-                            !selected && nodeData.hasChildren && isAssistant && "max-h-[150px] overflow-hidden relative mask-linear-fade"
+                            !selected && !isHovered && nodeData.hasChildren && isAssistant && "max-h-[120px] overflow-hidden relative"
                         )}
                     >
                         {nodeData.content ? (
@@ -229,8 +234,11 @@ function ConversationNodeComponent(props: NodeProps) {
                         ) : (
                             isUser ? 'Click to type...' : 'Generating...'
                         )}
-                        {!selected && nodeData.hasChildren && isAssistant && (
-                            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-card to-transparent pointer-events-none flex items-end justify-center pb-2">
+                        {!selected && !isHovered && nodeData.hasChildren && isAssistant && (
+                            <div className={cn(
+                                "absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t pointer-events-none flex items-end justify-center pb-2 transition-all duration-300",
+                                theme === 'dark' ? "from-card to-transparent" : "from-muted/80 to-transparent"
+                            )}>
                                 <span className="text-xs font-medium text-muted-foreground bg-accent/50 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm border border-border/50">...</span>
                             </div>
                         )}
