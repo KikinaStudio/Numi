@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase/client';
 import { ConversationNode } from '@/lib/stores/canvas-store';
 import { Edge } from '@xyflow/react';
 
-const DEBOUNCE_DELAY = 1000; // 1 second auto-save
+const DEBOUNCE_DELAY = 2000; // 2 seconds auto-save (less frequent)
 
 interface DbNode {
     id: string;
@@ -266,6 +266,13 @@ export function usePersistence() {
     // Debounced Auto-save
     useEffect(() => {
         if (nodes.length === 0) return; // Don't save empty state immediately
+
+        // ABORT auto-save if ANY node is currently generating AI content
+        // This solves the "save every half second" issue during streaming
+        const isGenerating = nodes.some(n => n.data.isGenerating);
+        if (isGenerating) {
+            return;
+        }
 
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
