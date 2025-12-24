@@ -53,6 +53,7 @@ interface CanvasState {
     contextMenu: { x: number; y: number; nodeId: string } | null;
     isConnecting: boolean;
     collaborators: Record<string, Collaborator>;
+    me: Collaborator | null;
 
     // Persistence
     treeId: string | null;
@@ -80,6 +81,7 @@ interface CanvasState {
     setContextMenu: (menu: { x: number; y: number; nodeId: string } | null) => void;
     setCollaborators: (collaborators: Record<string, Collaborator>) => void;
     updateCollaborator: (id: string, data: Partial<Collaborator>) => void;
+    setMe: (me: Collaborator) => void;
 
     // Persistence Actions
     setTreeId: (id: string | null) => void;
@@ -122,6 +124,7 @@ export const useCanvasStore = create<CanvasState>()(
         syncStatus: 'synced',
         syncError: null,
         collaborators: {},
+        me: null,
 
         // Setters
         setNodes: (nodes) => set({ nodes }),
@@ -229,6 +232,7 @@ export const useCanvasStore = create<CanvasState>()(
                 };
             }
         }),
+        setMe: (me) => set({ me }),
 
         // Branching operations
         createRootNode: (position, content = '') => {

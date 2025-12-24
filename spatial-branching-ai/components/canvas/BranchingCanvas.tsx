@@ -79,10 +79,14 @@ function Canvas() {
         const randomName = names[Math.floor(Math.random() * names.length)];
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-        useCanvasStore.getState().updateCollaborator(guestId, {
+        const me = {
+            id: guestId,
             name: `${randomName} (You)`,
-            color: randomColor
-        });
+            color: randomColor,
+            lastActive: Date.now()
+        };
+        useCanvasStore.getState().setMe(me);
+        useCanvasStore.getState().updateCollaborator(guestId, me);
     }, []);
 
     // Handle pane click - create root node or clear selection

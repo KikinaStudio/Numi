@@ -48,11 +48,13 @@ export function usePersistence() {
         loadGraph,
         syncStatus,
         updateNode,
+        me,
     } = useCanvasStore();
 
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
     const lastSavedRef = useRef<string>('');
     const isSavingRef = useRef<boolean>(false);
+    const channelRef = useRef<any>(null);
 
     // Serialize current state to detect changes
     const serializeState = (nodes: ConversationNode[], edges: Edge[]) => {
@@ -296,9 +298,18 @@ export function usePersistence() {
 
         if (!treeId) return;
 
-        // 1. Subscribe to Nodes
-        const nodesChannel = client
-            .channel(`nodes:${treeId}`)
+        // Presence & Realtime Channel
+        const channel = client.channel(`tree:${treeId}`, {
+            config: {
+                presence: {
+                    key: treeId,
+                },
+            },
+        });
+        channelRef.current = channel;
+
+        // 1. Listen for Database Changes
+        channel
             .on(
                 'postgres_changes',
                 {
@@ -308,7 +319,10 @@ export function usePersistence() {
                     filter: `tree_id=eq.${treeId}`,
                 },
                 (payload) => {
+                    // Ignore if we are the one who sent this (via isSavingRef)
                     if (isSavingRef.current) return;
+
+                    const currentNodes = useCanvasStore.getState().nodes;
 
                     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                         const node = payload.new as DbNode;
@@ -324,26 +338,29 @@ export function usePersistence() {
                             },
                         };
 
-                        const currentNodes = useCanvasStore.getState().nodes;
                         const existingNodeIndex = currentNodes.findIndex(n => n.id === node.id);
-
                         if (existingNodeIndex !== -1) {
-                            const updatedNodes = [...currentNodes];
-                            updatedNodes[existingNodeIndex] = flowNode;
-                            setNodes(updatedNodes);
+                            // Only update if content or position actually changed to avoid jitter
+                            const existing = currentNodes[existingNodeIndex];
+                            const hasChanged =
+                                existing.data.content !== flowNode.data.content ||
+                                existing.position.x !== flowNode.position.x ||
+                                existing.position.y !== flowNode.position.y ||
+                                existing.data.role !== flowNode.data.role;
+
+                            if (hasChanged) {
+                                const updatedNodes = [...currentNodes];
+                                updatedNodes[existingNodeIndex] = flowNode;
+                                setNodes(updatedNodes);
+                            }
                         } else {
                             setNodes([...currentNodes, flowNode]);
                         }
                     } else if (payload.eventType === 'DELETE') {
-                        setNodes(useCanvasStore.getState().nodes.filter(n => n.id !== payload.old.id));
+                        setNodes(currentNodes.filter(n => n.id !== payload.old.id));
                     }
                 }
             )
-            .subscribe();
-
-        // 2. Subscribe to Edges
-        const edgesChannel = client
-            .channel(`edges:${treeId}`)
             .on(
                 'postgres_changes',
                 {
@@ -354,6 +371,8 @@ export function usePersistence() {
                 },
                 (payload) => {
                     if (isSavingRef.current) return;
+
+                    const currentEdges = useCanvasStore.getState().edges;
 
                     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                         const edge = payload.new as DbEdge;
@@ -366,20 +385,17 @@ export function usePersistence() {
                             style: { stroke: '#94a3b8', strokeWidth: 2 },
                         };
 
-                        const currentEdges = useCanvasStore.getState().edges;
                         if (!currentEdges.find(e => e.id === flowEdge.id)) {
                             setEdges([...currentEdges, flowEdge]);
                         }
                     } else if (payload.eventType === 'DELETE') {
-                        setEdges(useCanvasStore.getState().edges.filter(e => e.id !== payload.old.id && (e.source !== payload.old.source_id || e.target !== payload.old.target_id)));
+                        setEdges(currentEdges.filter(e =>
+                            e.id !== payload.old.id &&
+                            (e.source !== payload.old.source_id || e.target !== payload.old.target_id)
+                        ));
                     }
                 }
             )
-            .subscribe();
-
-        // 3. Subscribe to Tree Meta (Name)
-        const treeChannel = client
-            .channel(`tree:${treeId}`)
             .on(
                 'postgres_changes',
                 {
@@ -390,19 +406,43 @@ export function usePersistence() {
                 },
                 (payload) => {
                     if (isSavingRef.current) return;
-                    if (payload.new.name !== treeName) {
+                    const { treeName: currentName, setTreeName } = useCanvasStore.getState();
+                    if (payload.new.name !== currentName) {
                         setTreeName(payload.new.name);
                     }
                 }
-            )
+            );
+
+        // 2. Presence Tracking (Online Users)
+        channel
+            .on('presence', { event: 'sync' }, () => {
+                const newState = channel.presenceState();
+                const flattened: Record<string, any> = {};
+
+                // Presence state is an object of keys (user IDs), each containing an array of presence objects
+                Object.values(newState).forEach((presences: any) => {
+                    presences.forEach((p: any) => {
+                        if (p.id) flattened[p.id] = p;
+                    });
+                });
+
+                useCanvasStore.getState().setCollaborators(flattened);
+            })
             .subscribe();
 
         return () => {
-            client.removeChannel(nodesChannel);
-            client.removeChannel(edgesChannel);
-            client.removeChannel(treeChannel);
+            client.removeChannel(channel);
+            channelRef.current = null;
         };
-    }, [treeId, loadTree, setNodes, setEdges, setTreeName, treeName]);
+    }, [treeId, loadTree, setNodes, setEdges]);
+
+    // Separate effect for Presence Tracking (Me)
+    useEffect(() => {
+        const channel = channelRef.current;
+        if (channel && me) {
+            channel.track(me);
+        }
+    }, [me, treeId]);
 
     // Update URL when treeId changes
     useEffect(() => {
