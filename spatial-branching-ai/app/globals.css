@@ -225,3 +225,12 @@
 .prose-notion th {
   @apply bg-muted/50 font-semibold;
 }
+
+/* React Flow Hover Elevation */
+.react-flow__node:hover {
+  z-index: 1000 !important;
+}
+
+.react-flow__node.selected {
+  z-index: 999 !important;
+}

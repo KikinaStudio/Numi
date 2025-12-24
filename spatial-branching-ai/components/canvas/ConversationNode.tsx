@@ -135,7 +135,6 @@ function ConversationNodeComponent(props: NodeProps) {
             onDoubleClick={(e) => e.stopPropagation()}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            style={{ zIndex: isHovered || selected ? 1000 : undefined }}
             className={cn(
                 'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out',
                 'hover:shadow-2xl',
@@ -226,8 +225,12 @@ function ConversationNodeComponent(props: NodeProps) {
                         className={cn(
                             'prose-notion select-text cursor-text pb-12 min-h-[100px] transition-all duration-300',
                             !nodeData.content && 'text-muted-foreground italic',
-                            !selected && !isHovered && nodeData.hasChildren && isAssistant && "max-h-[120px] overflow-hidden relative"
+                            !selected && !isHovered && nodeData.hasChildren && isAssistant && "max-h-[120px] overflow-hidden"
                         )}
+                        style={!selected && !isHovered && nodeData.hasChildren && isAssistant ? {
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                            maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+                        } : {}}
                     >
                         {nodeData.content ? (
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -237,11 +240,8 @@ function ConversationNodeComponent(props: NodeProps) {
                             isUser ? 'Click to type...' : 'Generating...'
                         )}
                         {!selected && !isHovered && nodeData.hasChildren && isAssistant && (
-                            <div className={cn(
-                                "absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t pointer-events-none flex items-end justify-center pb-2 transition-all duration-300",
-                                theme === 'dark' ? "from-card to-transparent" : "from-muted/80 to-transparent"
-                            )}>
-                                <span className="text-xs font-medium text-muted-foreground bg-accent/50 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm border border-border/50">...</span>
+                            <div className="absolute bottom-1 left-0 right-0 flex justify-center pb-1 pointer-events-none">
+                                <div className="h-1.5 w-8 rounded-full bg-muted-foreground/30 animate-pulse" />
                             </div>
                         )}
                     </div>

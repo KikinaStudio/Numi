@@ -245,8 +245,6 @@ function Canvas() {
                 minZoom={0.1}
                 maxZoom={2}
                 panOnScroll
-                panOnScrollSpeed={1.2}
-                panOnScrollMode={PanOnScrollMode.Free}
                 zoomOnScroll={false}
                 zoomOnPinch
                 attributionPosition="bottom-left"
