@@ -310,7 +310,13 @@ function Canvas() {
                             size="sm"
                             variant="ghost"
                             className="gap-2"
-                            onClick={() => clearCanvas()}
+                            onClick={() => {
+                                clearCanvas();
+                                // Remove treeId from URL to prevent auto-reloading the old tree
+                                const url = new URL(window.location.href);
+                                url.searchParams.delete('treeId');
+                                window.history.pushState({}, '', url);
+                            }}
                             title="Start a new conversation"
                         >
                             <FilePlus className="h-4 w-4" />
