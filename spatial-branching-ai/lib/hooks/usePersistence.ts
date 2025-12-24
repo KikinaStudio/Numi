@@ -57,7 +57,7 @@ export function usePersistence() {
     const channelRef = useRef<any>(null);
 
     // Serialize current state to detect changes
-    const serializeState = (nodes: ConversationNode[], edges: Edge[], name: string) => {
+    const serializeState = useCallback((nodes: ConversationNode[], edges: Edge[], name: string) => {
         return JSON.stringify({
             name,
             nodes: nodes.map(n => ({
@@ -70,7 +70,7 @@ export function usePersistence() {
                 target: e.target
             }))
         });
-    };
+    }, []);
 
     const saveTree = useCallback(async () => {
         if (!supabase) {
@@ -201,7 +201,7 @@ export function usePersistence() {
         } finally {
             isSavingRef.current = false;
         }
-    }, [nodes, edges, treeId, treeName, setTreeId, setSyncStatus]);
+    }, [nodes, edges, treeId, treeName, setTreeId, setSyncStatus, serializeState]);
 
     const loadTree = useCallback(async (id: string) => {
         if (!supabase) return;
@@ -254,11 +254,21 @@ export function usePersistence() {
             // 5. Load into Store
             loadGraph(flowNodes, flowEdges, tree.id, tree.name);
 
+            // 6. Update URL immediately to prevent the existence effect from reloading the previous tree
+            const url = new URL(window.location.href);
+            if (url.searchParams.get('treeId') !== tree.id) {
+                url.searchParams.set('treeId', tree.id);
+                window.history.pushState({}, '', url.toString());
+            }
+
+            // 7. Update lastSavedRef to prevent immediate auto-save after loading
+            lastSavedRef.current = serializeState(flowNodes, flowEdges, tree.name);
+
         } catch (error: any) {
             console.error('Failed to load tree:', error);
             setSyncStatus('error', `Load failed: ${error.message || 'Unknown error'}`);
         }
-    }, [loadGraph, setSyncStatus]);
+    }, [loadGraph, setSyncStatus, serializeState]);
 
     // Debounced Auto-save
     useEffect(() => {
