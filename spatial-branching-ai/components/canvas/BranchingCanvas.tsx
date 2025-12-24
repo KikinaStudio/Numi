@@ -246,7 +246,7 @@ function Canvas() {
                         <p className="text-sm text-muted-foreground">
                             <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Double-click</kbd> canvas to create •
                             <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Double-click</kbd> node to edit •
-                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Right-click</kbd> to branch
+                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Select text</kbd> to branch
                         </p>
                     </div>
                 </Panel>
@@ -290,19 +290,13 @@ function Canvas() {
                             variant="outline"
                             className="gap-2"
                             onClick={() => {
-                                // Calculate position in the top third of the viewport
-                                const viewport = reactFlowWrapper.current?.getBoundingClientRect();
-                                if (viewport) {
-                                    // Get the flow position for the horizontal center and vertical top-third
-                                    const position = screenToFlowPosition({
-                                        x: viewport.left + viewport.width / 2,
-                                        y: viewport.top + viewport.height / 4, // 1/4th down for 'higher third' feel
-                                    });
-                                    // Adjust for node width/height roughly (assuming ~300x150)
-                                    createRootNode({
-                                        x: position.x - 150,
-                                        y: position.y - 75
-                                    });
+                                if (reactFlowWrapper.current) {
+                                    const { width, height, left, top } = reactFlowWrapper.current.getBoundingClientRect();
+                                    const x = left + (width / 2);
+                                    const y = top + (height / 3); // Upper third
+                                    const pos = screenToFlowPosition({ x, y });
+                                    // Offset by half node width (approx 140px) so it's centered
+                                    createRootNode({ x: pos.x - 140, y: pos.y });
                                 } else {
                                     createRootNode({ x: 0, y: 0 });
                                 }
