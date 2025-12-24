@@ -12,7 +12,7 @@ import {
     Panel,
     NodeTypes,
 } from '@xyflow/react';
-import { useCanvasStore, useNodes, useEdges, ConversationNodeData } from '@/lib/stores/canvas-store';
+import { useCanvasStore, useNodes, useEdges, ConversationNodeData, useTemporalStore } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
@@ -63,6 +63,35 @@ function Canvas() {
         collaborators,
         treeId,
     } = useCanvasStore();
+
+    // Compute hasChildren for nodes to enable compact view
+    const nodesWithChildStatus = useMemo(() => {
+        const parentIds = new Set(edges.map(e => e.source));
+        return nodes.map(n => ({
+            ...n,
+            data: {
+                ...n.data,
+                hasChildren: parentIds.has(n.id)
+            }
+        }));
+    }, [nodes, edges]);
+
+    // Keyboard Shortcuts (Undo)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                e.preventDefault();
+                // Access temporal store directly
+                const temporal = useCanvasStore.temporal;
+                if (temporal) {
+                    temporal.getState().undo();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
 
     // Persistence hook for auto-saving
     usePersistence();
@@ -199,7 +228,7 @@ function Canvas() {
     return (
         <div ref={reactFlowWrapper} className="w-full h-full">
             <ReactFlow
-                nodes={nodes}
+                nodes={nodesWithChildStatus}
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
@@ -214,6 +243,9 @@ function Canvas() {
                 snapGrid={[20, 20]}
                 minZoom={0.1}
                 maxZoom={2}
+                panOnScroll
+                zoomOnScroll={false}
+                zoomOnPinch
                 attributionPosition="bottom-left"
                 proOptions={{ hideAttribution: true }}
             >
@@ -241,10 +273,10 @@ function Canvas() {
                 />
 
                 {/* Tree Name Panel */}
-                <Panel position="top-left" className="mt-4 ml-4">
-                    <div className="flex items-center gap-2 p-1 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
-                        <div className="p-2 bg-primary/10 rounded-md">
-                            <Home className="h-4 w-4 text-primary" />
+                <Panel position="top-left" className="m-4">
+                    <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
+                        <div className="flex items-center gap-2 pr-3 border-r border-border">
+                            <img src="/numi-tree-logo.png" alt="Numi" className="h-6 w-auto" />
                         </div>
                         <Input
                             value={treeName}
@@ -258,6 +290,17 @@ function Canvas() {
                             className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium"
                             placeholder="Conversation Title"
                         />
+                        <div className="flex items-center gap-2 pl-2 border-l border-border">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => setShowTreeList(true)}
+                                title="Open saved conversations"
+                            >
+                                <FolderOpen className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </Panel>
 
@@ -294,18 +337,8 @@ function Canvas() {
                     )}
                 </Panel>
 
-                {/* Instructions Panel */}
-                <Panel position="top-center" className="mt-4">
-                    <div className="px-4 py-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
-                        <p className="text-sm text-muted-foreground">
-                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Double-click</kbd> canvas to create •
-                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Double-click</kbd> node to edit •
-                            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-2">Right-click</kbd> to branch
-                        </p>
-                    </div>
-                </Panel>
 
-                {/* Quick actions panel */}
+
                 <Panel position="bottom-center" className="mb-4">
                     <div className="flex items-center gap-2 p-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
                         <Button

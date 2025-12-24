@@ -218,7 +218,8 @@ function ConversationNodeComponent(props: NodeProps) {
                         onDoubleClick={handleDoubleClick}
                         className={cn(
                             'prose-notion select-text cursor-text pb-12 min-h-[100px]',
-                            !nodeData.content && 'text-muted-foreground italic'
+                            !nodeData.content && 'text-muted-foreground italic',
+                            !selected && nodeData.hasChildren && isAssistant && "max-h-[150px] overflow-hidden relative mask-linear-fade"
                         )}
                     >
                         {nodeData.content ? (
@@ -227,6 +228,11 @@ function ConversationNodeComponent(props: NodeProps) {
                             </ReactMarkdown>
                         ) : (
                             isUser ? 'Click to type...' : 'Generating...'
+                        )}
+                        {!selected && nodeData.hasChildren && isAssistant && (
+                            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-card to-transparent pointer-events-none flex items-end justify-center pb-2">
+                                <span className="text-xs font-medium text-muted-foreground bg-accent/50 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm border border-border/50">...</span>
+                            </div>
                         )}
                     </div>
                 )}
