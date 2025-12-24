@@ -254,8 +254,8 @@ function Canvas() {
                 </Panel>
 
                 {/* Sync Status Panel */}
-                <Panel position="top-right" className="mt-4 mr-4">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
+                <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
+                    <div className="flex items-center justify-center w-9 h-9 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
                         {syncStatus === 'saving' && <Cloud className="h-4 w-4 animate-bounce text-primary" />}
                         {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
                         {syncStatus === 'error' && (
@@ -271,16 +271,16 @@ function Canvas() {
                             {Object.values(collaborators).map((c) => (
                                 <div
                                     key={c.id}
-                                    className="inline-block h-8 w-8 rounded-full ring-2 ring-background flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                                    className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[10px] font-bold text-white shadow-sm"
                                     style={{ backgroundColor: c.color }}
                                     title={c.name}
                                 >
-                                    {c.name.charAt(0).toUpperCase()}
+                                    <span className="leading-none">{c.name.charAt(0).toUpperCase()}</span>
                                 </div>
                             ))}
-                            <div className="flex items-center ml-2 px-2 py-1 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                            <div className="flex items-center ml-2 px-2 h-8 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[10px] font-medium text-muted-foreground whitespace-nowrap">
                                 <Users className="h-3 w-3 mr-1" />
-                                {Object.keys(collaborators).length} online
+                                {Object.keys(collaborators).length}
                             </div>
                         </div>
                     )}
