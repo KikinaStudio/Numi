@@ -377,28 +377,16 @@ function Canvas() {
                     </div>
                 </Panel>
 
-                {/* Sync Status Panel */}
+                {/* Top Right Controls: Collaborators & Profile */}
                 <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-9 h-9 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
-                            {syncStatus === 'saving' && <Cloud className="h-4 w-4 animate-bounce text-primary" />}
-                            {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
-                            {syncStatus === 'error' && (
-                                <div title={syncError || 'Sync Error'}>
-                                    <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
                     {/* Collaborators List (Including Me) */}
                     {Object.keys(collaborators).length > 0 && (
-                        <div className="flex items-center -mt-3 mr-1 relative z-10">
+                        <div className="flex items-center gap-2">
                             <div className="flex items-center -space-x-2">
                                 {Object.values(collaborators).map((c) => (
                                     <div
                                         key={c.id}
-                                        className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[10px] font-bold text-white shadow-md hover:z-20 transition-all cursor-default"
+                                        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[11px] font-bold text-white shadow-md hover:z-20 transition-all cursor-default"
                                         style={{ backgroundColor: c.color }}
                                         title={c.name}
                                     >
@@ -406,8 +394,8 @@ function Canvas() {
                                     </div>
                                 ))}
                             </div>
-                            <div className="ml-2 flex items-center px-2 h-7 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[9px] font-bold text-muted-foreground whitespace-nowrap">
-                                <Users className="h-3 w-3 mr-1" />
+                            <div className="flex items-center px-3 h-9 bg-card/90 backdrop-blur-md border border-border rounded-full shadow-sm text-[11px] font-bold text-muted-foreground whitespace-nowrap">
+                                <Users className="h-3.5 w-3.5 mr-1.5" />
                                 {Object.keys(collaborators).length}
                             </div>
                         </div>

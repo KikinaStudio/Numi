@@ -53,27 +53,25 @@ export function useChat(options: UseChatOptions = {}) {
             }));
 
         // INJECT PERSONA SYSTEM PROMPT
-        // We look for the user node that triggered this generation (the parent of the current 'generating' node)
-        // Or deeper ancestors if needed. But typically, the style is decided by the prompt node.
-        const parentNode = getConversationContext(nodeId).length > 0 ? useCanvasStore.getState().nodes.find(n =>
-            // The prompt comes from the last USER message in the chain
-            n.id === useCanvasStore.getState().edges.find(e => e.target === nodeId)?.source
-        ) : null;
+        // We look for the persona settings on the node being generated (which should have inherited them)
+        const nodeToCheck = useCanvasStore.getState().nodes.find(n => n.id === nodeId);
+        const personaId = nodeToCheck?.data.selectedPersonaId;
+        const customPersona = nodeToCheck?.data.customPersona;
 
-        if (parentNode && parentNode.data.selectedPersonaId) {
+        if (personaId) {
             let systemPrompt = '';
 
-            if (parentNode.data.selectedPersonaId === 'custom' && parentNode.data.customPersona) {
-                systemPrompt = parentNode.data.customPersona.systemPrompt;
+            if (personaId === 'custom' && customPersona) {
+                systemPrompt = customPersona.systemPrompt;
             } else {
-                const persona = PERSONAS.find(p => p.id === parentNode.data.selectedPersonaId);
+                const persona = PERSONAS.find(p => p.id === personaId);
                 if (persona && persona.id !== 'standard') {
                     systemPrompt = persona.systemPrompt;
                 }
             }
 
             if (systemPrompt) {
-                // Prepend system prompt
+                // Prepend system prompt at the VERY beginning
                 validMessages = [
                     { role: 'system', content: systemPrompt },
                     ...validMessages
