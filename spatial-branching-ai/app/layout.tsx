@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "Spatial Branching AI | Infinite Canvas Conversations",
   description: "Visualize and branch your AI conversations in an infinite canvas. Create non-linear conversation trees with deep branching from text selections.",
   keywords: ["AI", "conversations", "branching", "canvas", "LLM", "ChatGPT"],
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
