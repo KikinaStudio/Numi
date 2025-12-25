@@ -18,6 +18,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Pencil } from 'lucide-react';
 
 
 function ConversationNodeComponent(props: NodeProps) {
@@ -29,6 +39,7 @@ function ConversationNodeComponent(props: NodeProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const [isEditingPersona, setIsEditingPersona] = useState(false);
 
     const { updateNode, setTextSelection, selectNode, setContextMenu, createChildNode } = useCanvasStore();
     const { generate } = useChat();
@@ -175,9 +186,11 @@ function ConversationNodeComponent(props: NodeProps) {
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
                     {isUser ? (userName || 'You') : (
-                        nodeData.selectedPersonaId
-                            ? PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Assistant'
-                            : 'Assistant'
+                        nodeData.selectedPersonaId === 'custom'
+                            ? nodeData.customPersona?.name || 'Custom Agent'
+                            : (nodeData.selectedPersonaId
+                                ? PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Assistant'
+                                : 'Assistant')
                     )}
                 </span>
                 {nodeData.isGenerating && (
@@ -185,14 +198,16 @@ function ConversationNodeComponent(props: NodeProps) {
                 )}
             </div>
 
-            {nodeData.branchContext && (
-                <div className="px-4 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-3 group transition-colors hover:bg-blue-500/10">
-                    <GitBranch className="h-4 w-4 text-blue-500 shrink-0" />
-                    <p className="text-[15px] text-foreground leading-relaxed font-medium">
-                        {nodeData.branchContext}
-                    </p>
-                </div>
-            )}
+            {
+                nodeData.branchContext && (
+                    <div className="px-4 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-3 group transition-colors hover:bg-blue-500/10">
+                        <GitBranch className="h-4 w-4 text-blue-500 shrink-0" />
+                        <p className="text-[15px] text-foreground leading-relaxed font-medium">
+                            {nodeData.branchContext}
+                        </p>
+                    </div>
+                )
+            }
 
             <div className="p-4 relative nodrag cursor-auto">
                 {isEditing || (selected && !isAssistant) ? (
@@ -267,21 +282,43 @@ function ConversationNodeComponent(props: NodeProps) {
                     <div className="absolute bottom-2 right-2 flex items-center gap-2 justify-end z-10 transition-opacity">
                         <Select
                             value={nodeData.selectedPersonaId || 'standard'}
-                            onValueChange={(value) => updateNode(id, { selectedPersonaId: value })}
+                            onValueChange={(value) => {
+                                updateNode(id, { selectedPersonaId: value });
+                                // Initialize custom persona if first time
+                                if (value === 'custom' && !nodeData.customPersona) {
+                                    updateNode(id, {
+                                        customPersona: {
+                                            name: 'Expert',
+                                            systemPrompt: 'You are a deep expert in this specific topic.',
+                                            description: 'Deep domain expertise'
+                                        }
+                                    });
+                                }
+                            }}
                         >
-                            <SelectTrigger className="h-7 w-[130px] text-xs bg-background border-input shadow-sm backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+                            <SelectTrigger className="h-7 w-[100px] text-[10px] font-bold bg-background border-input shadow-sm backdrop-blur-sm animate-in fade-in zoom-in duration-200">
                                 <SelectValue placeholder="Agent" />
                             </SelectTrigger>
                             <SelectContent className="bg-popover">
                                 {PERSONAS.map(persona => (
-                                    <SelectItem key={persona.id} value={persona.id} className="text-xs">
-                                        <span className="flex items-center gap-2">
-                                            <span>{persona.shortLabel}</span>
-                                        </span>
+                                    <SelectItem key={persona.id} value={persona.id} className="text-[10px]">
+                                        {persona.shortLabel}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
+
+                        {nodeData.selectedPersonaId === 'custom' && (
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7 bg-background shadow-sm"
+                                onClick={() => setIsEditingPersona(true)}
+                                title="Edit Custom Agent"
+                            >
+                                <Pencil className="h-3 w-3" />
+                            </Button>
+                        )}
 
                         <button
                             onMouseDown={(e) => e.preventDefault()} // Prevent blur
@@ -346,7 +383,52 @@ function ConversationNodeComponent(props: NodeProps) {
                 id="r"
                 className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
             />
-        </div>
+
+            {/* Custom Agent Editor Dialog */}
+            <Dialog open={isEditingPersona} onOpenChange={setIsEditingPersona}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Personnaliser l'Agent</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Nom de l'Agent</label>
+                            <Input
+                                value={nodeData.customPersona?.name || ''}
+                                onChange={(e) => updateNode(id, {
+                                    customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), name: e.target.value }
+                                })}
+                                placeholder="ex: Expert React"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">But / Description</label>
+                            <Input
+                                value={nodeData.customPersona?.description || ''}
+                                onChange={(e) => updateNode(id, {
+                                    customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), description: e.target.value }
+                                })}
+                                placeholder="ex: Analyse le code et propose des optimisations"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Instructions (Prompt Système)</label>
+                            <textarea
+                                value={nodeData.customPersona?.systemPrompt || ''}
+                                onChange={(e) => updateNode(id, {
+                                    customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), systemPrompt: e.target.value }
+                                })}
+                                className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                placeholder="Indique à l'IA comment elle doit se comporter..."
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsEditingPersona(false)}>Enregistrer</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }
 

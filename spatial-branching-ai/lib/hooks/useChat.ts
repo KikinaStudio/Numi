@@ -61,11 +61,21 @@ export function useChat(options: UseChatOptions = {}) {
         ) : null;
 
         if (parentNode && parentNode.data.selectedPersonaId) {
-            const persona = PERSONAS.find(p => p.id === parentNode.data.selectedPersonaId);
-            if (persona && persona.id !== 'standard') {
+            let systemPrompt = '';
+
+            if (parentNode.data.selectedPersonaId === 'custom' && parentNode.data.customPersona) {
+                systemPrompt = parentNode.data.customPersona.systemPrompt;
+            } else {
+                const persona = PERSONAS.find(p => p.id === parentNode.data.selectedPersonaId);
+                if (persona && persona.id !== 'standard') {
+                    systemPrompt = persona.systemPrompt;
+                }
+            }
+
+            if (systemPrompt) {
                 // Prepend system prompt
                 validMessages = [
-                    { role: 'system', content: persona.systemPrompt },
+                    { role: 'system', content: systemPrompt },
                     ...validMessages
                 ];
             }

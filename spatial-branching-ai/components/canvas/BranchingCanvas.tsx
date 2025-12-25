@@ -393,18 +393,20 @@ function Canvas() {
 
                     {/* Collaborators List (Including Me) */}
                     {Object.keys(collaborators).length > 0 && (
-                        <div className="mt-2 flex items-center gap-2">
-                            {Object.values(collaborators).map((c) => (
-                                <div
-                                    key={c.id}
-                                    className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[10px] font-bold text-white shadow-sm"
-                                    style={{ backgroundColor: c.color }}
-                                    title={c.name}
-                                >
-                                    <span className="leading-none">{c.name.charAt(0).toUpperCase()}</span>
-                                </div>
-                            ))}
-                            <div className="flex items-center px-2 h-8 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                        <div className="flex items-center -mt-3 mr-1 relative z-10">
+                            <div className="flex items-center -space-x-2">
+                                {Object.values(collaborators).map((c) => (
+                                    <div
+                                        key={c.id}
+                                        className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[10px] font-bold text-white shadow-md hover:z-20 transition-all cursor-default"
+                                        style={{ backgroundColor: c.color }}
+                                        title={c.name}
+                                    >
+                                        <span className="leading-none">{c.name.charAt(0).toUpperCase()}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="ml-2 flex items-center px-2 h-7 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[9px] font-bold text-muted-foreground whitespace-nowrap">
                                 <Users className="h-3 w-3 mr-1" />
                                 {Object.keys(collaborators).length}
                             </div>

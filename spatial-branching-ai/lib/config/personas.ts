@@ -78,5 +78,12 @@ Tu proposes ensuite : 3 améliorations UX + 3 hypothèses à tester avec des int
 Ta mission : explorer des alternatives inattendues et générer des concepts.
 Tu poses des questions qui ouvrent le champ : analogies, inversions, simplification extrême, "contrainte artificielle", variation sur la cible.
 Tu proposes ensuite : 10 idées, puis tu regroupes en 3 directions avec un angle fort.`
+    },
+    {
+        id: 'custom',
+        name: 'Custom Agent',
+        description: 'Personally configured by you.',
+        shortLabel: 'Custom',
+        systemPrompt: 'You are a custom AI agent.'
     }
 ];

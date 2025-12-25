@@ -24,6 +24,11 @@ export interface ConversationNodeData extends Record<string, unknown> {
         temperature?: number;
     };
     selectedPersonaId?: string;
+    customPersona?: {
+        name: string;
+        systemPrompt: string;
+        description: string;
+    };
     hasChildren?: boolean;
 }
 
@@ -274,6 +279,7 @@ export const useCanvasStore = create<CanvasState>()(
                         branchContext,
                         isGenerating: role === 'assistant',
                         selectedPersonaId: parent?.data.selectedPersonaId,
+                        customPersona: parent?.data.customPersona,
                     },
                 };
 
