@@ -324,6 +324,7 @@ export function usePersistence() {
         if (!treeId) return;
 
         // Presence & Realtime Channel
+        useCanvasStore.getState().setRealtimeStatus('CONNECTING');
         const channel = client.channel(`tree:${treeId}`, {
             config: {
                 presence: {
@@ -350,6 +351,7 @@ export function usePersistence() {
                     // Filter locally by treeId
                     if (nodeTreeId !== treeId) return;
 
+                    useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Node ${payload.eventType}`);
                     console.log('📡 [Realtime] Node Change (current tree):', payload.eventType, newId || oldId);
                     // Ignore if we are the one who sent this (via isSavingRef)
                     if (isSavingRef.current) return;
@@ -408,6 +410,7 @@ export function usePersistence() {
                     const edgeTreeId = (payload.new as any)?.tree_id || (payload.old as any)?.tree_id;
                     if (edgeTreeId !== treeId) return;
 
+                    useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Edge ${payload.eventType}`);
                     console.log('📡 [Realtime] Edge Change (current tree):', payload.eventType);
                     if (isSavingRef.current) return;
 
@@ -471,7 +474,14 @@ export function usePersistence() {
             })
             .subscribe(async (status, err) => {
                 console.log('🔗 [Realtime] Status:', status);
-                if (err) console.error('❌ [Realtime] Subscription Error:', err);
+
+                if (err) {
+                    console.error('❌ [Realtime] Subscription Error:', err);
+                    useCanvasStore.getState().setRealtimeStatus('ERROR', err.message);
+                } else {
+                    useCanvasStore.getState().setRealtimeStatus(status as any);
+                }
+
                 if (status === 'SUBSCRIBED' && me) {
                     await channel.track(me);
                 }
@@ -483,16 +493,7 @@ export function usePersistence() {
         };
     }, [treeId, loadTree, setNodes, setEdges, me?.id]);
 
-    // Separate effect for Presence Tracking (Me) - Ensures updates (like cursors) are sent
-    useEffect(() => {
-        const channel = channelRef.current;
-        if (channel && me) {
-            // Debounce or verify connection state if needed, but track() handles internal throttling
-            channel.track(me).catch((err: any) => {
-                console.error('❌ [Realtime] Track Error:', err);
-            });
-        }
-    }, [me, treeId]);
+    // Simplified presence tracking is now handled in the main channel subscription
 
     // Update URL when treeId changes
     useEffect(() => {

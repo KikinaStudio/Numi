@@ -26,7 +26,7 @@ import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
 import { SettingsDialog } from '@/components/ui/settings-dialog';
 import { UserOnboardingModal } from './UserOnboardingModal';
-import CollaboratorCursor from './CollaboratorCursor';
+import { DiagnosticsPanel } from './DiagnosticsPanel';
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
@@ -469,18 +469,9 @@ function Canvas() {
                     </div>
                 </Panel>
 
-                {/* Live Collaborator Cursors Overlay */}
-                {Object.values(collaborators)
-                    .filter(c => c.id !== me?.id && c.mousePos)
-                    .map(c => (
-                        <CollaboratorCursor
-                            key={c.id}
-                            name={c.name}
-                            color={c.color}
-                            x={c.mousePos!.x}
-                            y={c.mousePos!.y}
-                        />
-                    ))}
+
+                {/* Diagnostics Panel for Realtime Debugging */}
+                <DiagnosticsPanel />
             </ReactFlow >
 
             {/* Context Menu */}
