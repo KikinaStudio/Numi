@@ -66,6 +66,7 @@ interface CanvasState {
 
     // Persistence
     treeId: string | null;
+    ownerId: string | null;
     treeName: string;
     syncStatus: 'synced' | 'saving' | 'error' | 'unsaved';
     syncError: string | null;
@@ -101,7 +102,7 @@ interface CanvasState {
     setSyncStatus: (status: CanvasState['syncStatus'], error?: string | null) => void;
     setRealtimeStatus: (status: 'CONNECTING' | 'SUBSCRIBED' | 'DISCONNECTED' | 'ERROR', event?: string) => void;
     setIsLoading: (loading: boolean) => void;
-    loadGraph: (nodes: ConversationNode[], edges: Edge[], treeId: string, treeName?: string) => void;
+    loadGraph: (nodes: ConversationNode[], edges: Edge[], treeId: string, treeName?: string, ownerId?: string | null) => void;
 
     // Branching
     createRootNode: (position: XYPosition, content?: string) => string;
@@ -135,6 +136,7 @@ export const useCanvasStore = create<CanvasState>()(
             contextMenu: null,
             isConnecting: false,
             treeId: null,
+            ownerId: null,
             treeName: 'Untitled Conversation',
             syncStatus: 'synced',
             syncError: null,
@@ -157,10 +159,11 @@ export const useCanvasStore = create<CanvasState>()(
                 lastRealtimeEvent: event !== undefined ? event : state.lastRealtimeEvent
             })),
             setIsLoading: (loading) => set({ isLoading: loading }),
-            loadGraph: (nodes, edges, treeId, treeName) => set({
+            loadGraph: (nodes, edges, treeId, treeName, ownerId) => set({
                 nodes,
                 edges,
                 treeId,
+                ownerId: ownerId || null,
                 treeName: treeName || 'Untitled Conversation',
                 syncStatus: 'synced',
                 syncError: null
@@ -230,6 +233,7 @@ export const useCanvasStore = create<CanvasState>()(
                     nodes: [],
                     edges: [],
                     treeId: null,
+                    ownerId: null,
                     treeName: 'Untitled Conversation',
                     selectedNodeId: null,
                     textSelection: null,

@@ -52,6 +52,7 @@ export function usePersistence() {
     const setEdges = useCanvasStore(state => state.setEdges);
     const setIsLoading = useCanvasStore(state => state.setIsLoading);
     const isLoading = useCanvasStore(state => state.isLoading);
+    const me = useCanvasStore(state => state.me);
 
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
     const lastSavedRef = useRef<string>('');
@@ -110,7 +111,10 @@ export function usePersistence() {
             if (!currentTreeId) {
                 const { data: tree, error: treeError } = await supabase
                     .from('trees')
-                    .insert({ name: currentName || 'Untitled Conversation' })
+                    .insert({
+                        name: currentName || 'Untitled Conversation',
+                        owner_id: me?.id
+                    })
                     .select()
                     .single();
 
@@ -268,7 +272,7 @@ export function usePersistence() {
             }));
 
             // 5. Load into Store
-            useCanvasStore.getState().loadGraph(flowNodes, flowEdges, tree.id, tree.name);
+            useCanvasStore.getState().loadGraph(flowNodes, flowEdges, tree.id, tree.name, tree.owner_id);
 
             // 6. Update URL immediately to prevent the existence effect from reloading the previous tree
             const url = new URL(window.location.href);
@@ -335,6 +339,7 @@ export function usePersistence() {
         let presenceChannel: any = null;
 
         const setupChannels = async () => {
+            if (!supabase) return;
             // Wait slightly for previous channels to clear backend sockets
             await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -356,6 +361,7 @@ export function usePersistence() {
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'nodes' },
                     (payload: any) => {
+                        if (!supabase) return;
                         const data = (payload.new || payload.old) as any;
                         if (data?.tree_id !== treeId) return;
 
@@ -456,9 +462,9 @@ export function usePersistence() {
                     }
                 });
 
-            // --- CHANNEL 2: PRESENCE (Unique Name) ---
-            presenceChannel = supabase.channel(`presence-${treeId}-${suffix}`, {
-                config: { presence: { key: useCanvasStore.getState().me?.id || 'anon' } }
+            // --- CHANNEL 2: PRESENCE (Global for this Tree) ---
+            presenceChannel = supabase.channel(`presence-${treeId}`, {
+                config: { presence: { key: me?.id || 'anon' } }
             });
             presenceChannelRef.current = presenceChannel;
 
@@ -475,8 +481,8 @@ export function usePersistence() {
                 .subscribe(async (status: string) => {
                     if (subId !== activeSubIdRef.current) return;
                     console.log(`👥 [Presence] sub #${subId}: ${status}`);
-                    const me = useCanvasStore.getState().me;
                     if (status === 'SUBSCRIBED' && me) {
+                        console.log('📡 [Presence] Initial tracking for:', me.name);
                         await presenceChannel.track(me);
                     }
                 });
@@ -491,16 +497,42 @@ export function usePersistence() {
                 activeSubIdRef.current++;
             }
 
-            if (dbChannel) {
+            if (dbChannel && supabase) {
                 supabase.removeChannel(dbChannel);
                 dbChannelRef.current = null;
             }
-            if (presenceChannel) {
+            if (presenceChannel && supabase) {
                 supabase.removeChannel(presenceChannel);
                 presenceChannelRef.current = null;
             }
         };
-    }, [treeId, setNodes, setEdges]); // Only react to treeId changes
+    }, [treeId, setNodes, setEdges, me?.id]); // Restart if treeId OR core user identity changes
+
+    // 3. REACTIVE PRESENCE TRACKING - Update metadata/position without restarting channel
+    useEffect(() => {
+        const channel = presenceChannelRef.current;
+        if (!channel || !me || !supabase) return;
+
+        // Only track if the channel is actually joined
+        if (channel.state === 'joined') {
+            console.log('📡 [Presence] Reactive tracking update:', me.name);
+            channel.track(me);
+        }
+    }, [me?.name, me?.color, me?.id]); // Track metadata changes
+
+    // 4. MOUSE POSITION TRACKING - throttled to avoid flooding
+    useEffect(() => {
+        const channel = presenceChannelRef.current;
+        if (!channel || !me || !me.mousePos || !supabase) return;
+
+        const timeoutId = setTimeout(() => {
+            if (channel.state === 'joined') {
+                channel.track(me);
+            }
+        }, 100); // Throttled updates for mouse
+
+        return () => clearTimeout(timeoutId);
+    }, [me?.mousePos?.x, me?.mousePos?.y]);
 
     // Update URL when treeId changes
     useEffect(() => {

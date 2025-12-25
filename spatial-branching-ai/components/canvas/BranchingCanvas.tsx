@@ -20,7 +20,8 @@ import NodeContextMenu from './NodeContextMenu';
 import SimpleFloatingEdge from './SimpleFloatingEdge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
@@ -75,6 +76,7 @@ function Canvas() {
         syncError,
         collaborators,
         treeId,
+        ownerId,
     } = useCanvasStore();
 
     // Compute hasChildren and branchedTexts for nodes to enable compact view and highlighting
@@ -172,6 +174,10 @@ function Canvas() {
     const setMe = useCanvasStore(s => s.setMe);
     const updateCollaborator = useCanvasStore(s => s.updateCollaborator);
     const me = useCanvasStore(s => s.me);
+    const isOwner = useMemo(() => {
+        if (!treeId || !ownerId) return true; // Newly created tree or legacy tree without owner
+        return me?.id === ownerId;
+    }, [treeId, ownerId, me?.id]);
 
     useEffect(() => {
         if (me && userName && me.name !== userName) {
@@ -378,18 +384,29 @@ function Canvas() {
                             <div className="flex items-center gap-2 pr-3 border-r border-border">
                                 <img src="/numi-tree-logo.png" alt="Numi" className="h-6 w-auto" />
                             </div>
-                            <Input
-                                value={treeName}
-                                onChange={(e) => setTreeName(e.target.value)}
-                                onFocus={(e) => e.target.select()}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.currentTarget.blur();
-                                    }
-                                }}
-                                className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium"
-                                placeholder="Conversation Title"
-                            />
+                            <div className="relative group">
+                                <Input
+                                    value={treeName}
+                                    onChange={(e) => isOwner && setTreeName(e.target.value)}
+                                    onFocus={(e) => isOwner && e.target.select()}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.currentTarget.blur();
+                                        }
+                                    }}
+                                    readOnly={!isOwner}
+                                    className={cn(
+                                        "h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium",
+                                        !isOwner ? "cursor-default opacity-80" : "cursor-text"
+                                    )}
+                                    placeholder="Conversation Title"
+                                />
+                                {!isOwner && (
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none opacity-40">
+                                        <Lock className="h-3 w-3" />
+                                    </div>
+                                )}
+                            </div>
                             <div className="flex items-center gap-2 pl-2 border-l border-border">
                                 <Button
                                     size="icon"
