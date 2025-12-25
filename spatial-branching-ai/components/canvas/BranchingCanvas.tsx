@@ -117,6 +117,7 @@ function Canvas() {
 
     const [showTreeList, setShowTreeList] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+    const [showShareToast, setShowShareToast] = useState(false);
 
     // AI Chat hook for generating responses
     const { generate } = useChat();
@@ -246,8 +247,8 @@ function Canvas() {
         if (!treeId) return;
         const url = `${window.location.origin}${window.location.pathname}?treeId=${treeId}`;
         navigator.clipboard.writeText(url);
-        // Simple visual feedback could be improved with a toast
-        alert('Share link copied to clipboard!');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 3000);
     }, [treeId]);
 
     // Default edge options for consistent styling  
@@ -449,6 +450,16 @@ function Canvas() {
                     />
                 )
             }
+
+            {/* Share Confirmation Toast */}
+            {showShareToast && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-sm border border-primary-foreground/10 backdrop-blur-md">
+                        <Check className="h-4 w-4" />
+                        Lien copié dans le presse-papiers !
+                    </div>
+                </div>
+            )}
 
             <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
             <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
