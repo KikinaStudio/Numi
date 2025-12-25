@@ -42,28 +42,22 @@ interface DbEdge {
 }
 
 export function usePersistence() {
-    const {
-        nodes,
-        edges,
-        treeId,
-        treeName,
-        setTreeId,
-        setTreeName,
-        setSyncStatus,
-        setNodes,
-        setEdges,
-        loadGraph,
-        syncStatus,
-        updateNode,
-        me,
-        isLoading,
-        setIsLoading,
-    } = useCanvasStore();
+    // Only grab stable things and the minimum reactive ones
+    const treeId = useCanvasStore(state => state.treeId);
+    const treeName = useCanvasStore(state => state.treeName);
+    const syncStatus = useCanvasStore(state => state.syncStatus);
+    const setSyncStatus = useCanvasStore(state => state.setSyncStatus);
+    const setTreeId = useCanvasStore(state => state.setTreeId);
+    const setNodes = useCanvasStore(state => state.setNodes);
+    const setEdges = useCanvasStore(state => state.setEdges);
+    const setIsLoading = useCanvasStore(state => state.setIsLoading);
+    const isLoading = useCanvasStore(state => state.isLoading);
 
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
     const lastSavedRef = useRef<string>('');
     const isSavingRef = useRef<boolean>(false);
-    const channelRef = useRef<any>(null);
+    const dbChannelRef = useRef<any>(null);
+    const presenceChannelRef = useRef<any>(null);
 
     // Serialize current state to detect changes
     const serializeState = useCallback((nodes: ConversationNode[], edges: Edge[], name: string) => {
@@ -88,8 +82,9 @@ export function usePersistence() {
             return;
         }
 
+        const state = useCanvasStore.getState();
         // Prevent parallel executions or saving during initial load
-        if (isSavingRef.current || isLoading) {
+        if (isSavingRef.current || state.isLoading) {
             return;
         }
 
@@ -97,20 +92,24 @@ export function usePersistence() {
         isSavingRef.current = true;
 
         try {
-            const currentState = serializeState(nodes, edges, treeName);
+            const currentNodes = state.nodes;
+            const currentEdges = state.edges;
+            const currentName = state.treeName;
+            let currentTreeId = state.treeId;
+
+            const currentState = serializeState(currentNodes, currentEdges, currentName);
             // If nothing changed since last save (and we aren't creating a new tree), skip
-            if (treeId && currentState === lastSavedRef.current) {
+            if (currentTreeId && currentState === lastSavedRef.current) {
                 setSyncStatus('synced');
                 isSavingRef.current = false;
                 return;
             }
 
             // 1. Ensure Tree Exists
-            let currentTreeId = treeId;
             if (!currentTreeId) {
                 const { data: tree, error: treeError } = await supabase
                     .from('trees')
-                    .insert({ name: treeName || 'Untitled Conversation' })
+                    .insert({ name: currentName || 'Untitled Conversation' })
                     .select()
                     .single();
 
@@ -124,14 +123,14 @@ export function usePersistence() {
                 await supabase
                     .from('trees')
                     .update({
-                        name: treeName,
+                        name: currentName,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', currentTreeId);
             }
 
             // 2. Upsert Nodes
-            const dbNodes: DbNode[] = nodes.map(node => ({
+            const dbNodes: DbNode[] = currentNodes.map(node => ({
                 id: node.id,
                 tree_id: currentTreeId!,
                 parent_id: null,
@@ -160,7 +159,7 @@ export function usePersistence() {
             }
 
             // Clean up deleted nodes
-            const activeNodeIds = nodes.map(n => n.id);
+            const activeNodeIds = currentNodes.map(n => n.id);
             if (activeNodeIds.length > 0) {
                 try {
                     await supabase
@@ -185,7 +184,7 @@ export function usePersistence() {
 
             // Deduplicate edges based on source/target to prevent unique constraint violations
             const uniqueEdgesMap = new Map<string, any>();
-            edges.forEach(edge => {
+            currentEdges.forEach(edge => {
                 const key = `${edge.source}-${edge.target}`;
                 if (!uniqueEdgesMap.has(key)) {
                     uniqueEdgesMap.set(key, {
@@ -213,11 +212,12 @@ export function usePersistence() {
         } finally {
             isSavingRef.current = false;
         }
-    }, [nodes, edges, treeId, treeName, setTreeId, setSyncStatus, serializeState]);
+    }, [setSyncStatus, setTreeId, serializeState]);
 
     const loadTree = useCallback(async (id: string) => {
         if (!supabase) return;
         setIsLoading(true);
+        console.log('📖 [Persistence] Loading tree:', id);
         try {
             // 1. Fetch Tree Metadata
             const { data: tree, error: treeError } = await supabase
@@ -267,7 +267,7 @@ export function usePersistence() {
             }));
 
             // 5. Load into Store
-            loadGraph(flowNodes, flowEdges, tree.id, tree.name);
+            useCanvasStore.getState().loadGraph(flowNodes, flowEdges, tree.id, tree.name);
 
             // 6. Update URL immediately to prevent the existence effect from reloading the previous tree
             const url = new URL(window.location.href);
@@ -279,14 +279,17 @@ export function usePersistence() {
             // 7. Update lastSavedRef to prevent immediate auto-save after loading
             lastSavedRef.current = serializeState(flowNodes, flowEdges, tree.name);
 
+        } catch (error) {
+            console.error('Error loading tree:', error);
         } finally {
             setIsLoading(false);
         }
-    }, [loadGraph, setSyncStatus, serializeState, setIsLoading]);
+    }, [setIsLoading, serializeState]);
 
     // Debounced Auto-save
     useEffect(() => {
-        if (nodes.length === 0) return; // Don't save empty state immediately
+        const currentNodes = useCanvasStore.getState().nodes;
+        if (currentNodes.length === 0) return; // Don't save empty state immediately
 
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
@@ -307,7 +310,7 @@ export function usePersistence() {
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [nodes, edges, treeName, saveTree, setSyncStatus, syncStatus]);
+    }, [useCanvasStore.getState().nodes, useCanvasStore.getState().edges, useCanvasStore.getState().treeName, saveTree, setSyncStatus, syncStatus]);
 
     // Initial load from URL and Realtime Subscriptions
     useEffect(() => {
@@ -323,140 +326,161 @@ export function usePersistence() {
 
         if (!treeId) return;
 
-        // --- CHANNEL 1: DATA SYNC (Postgres Changes) ---
-        useCanvasStore.getState().setRealtimeStatus('CONNECTING');
-        const dbChannel = client.channel(`db-sync:${treeId}`);
+        console.log('⚡️ [Realtime] Initializing channels for:', treeId);
 
-        dbChannel
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'nodes' },
-                (payload) => {
-                    const data = (payload.new || payload.old) as any;
-                    if (data?.tree_id !== treeId) return;
+        // Use a small delay to ensure previous channels are fully cleaned up in the backend
+        const timeoutId = setTimeout(() => {
+            const state = useCanvasStore.getState();
+            state.setRealtimeStatus('CONNECTING');
 
-                    useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Node ${payload.eventType}`);
-                    if (isSavingRef.current) return;
+            // --- CHANNEL 1: DATABASE ---
+            const dbChannel = client.channel(`db-sync-${treeId}`);
+            dbChannelRef.current = dbChannel;
 
-                    const state = useCanvasStore.getState();
-                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                        const node = payload.new as DbNode;
-                        const flowNode: ConversationNode = {
-                            id: node.id,
-                            type: 'conversation',
-                            position: { x: node.position_x, y: node.position_y },
-                            data: {
-                                role: node.data.role,
-                                content: node.data.content,
-                                branchContext: node.data.branchContext,
-                                authorName: node.data.authorName,
-                                modelConfig: node.model_config,
-                            },
-                        };
+            dbChannel
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'nodes' },
+                    (payload) => {
+                        const data = (payload.new || payload.old) as any;
+                        if (data?.tree_id !== treeId) return;
 
-                        const currentNodes = state.nodes;
-                        const existingIndex = currentNodes.findIndex(n => n.id === node.id);
-                        if (existingIndex !== -1) {
-                            const existing = currentNodes[existingIndex];
-                            if (existing.data.content !== flowNode.data.content ||
-                                Math.abs(existing.position.x - flowNode.position.x) > 1 ||
-                                Math.abs(existing.position.y - flowNode.position.y) > 1) {
-                                const nextNodes = [...currentNodes];
-                                nextNodes[existingIndex] = flowNode;
-                                setNodes(nextNodes);
-                            }
-                        } else {
-                            setNodes([...currentNodes, flowNode]);
-                        }
-                    } else if (payload.eventType === 'DELETE') {
-                        setNodes(state.nodes.filter(n => n.id !== payload.old.id));
-                    }
-                }
-            )
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'edges' },
-                (payload) => {
-                    const data = (payload.new || payload.old) as any;
-                    if (data?.tree_id !== treeId) return;
+                        useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Node ${payload.eventType}`);
+                        if (isSavingRef.current) return;
 
-                    useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Edge ${payload.eventType}`);
-                    if (isSavingRef.current) return;
-
-                    const state = useCanvasStore.getState();
-                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                        const edge = payload.new as DbEdge;
-                        if (!state.edges.find(e => e.id === edge.id)) {
-                            const flowEdge: Edge = {
-                                id: edge.id!,
-                                source: edge.source_id,
-                                target: edge.target_id,
-                                type: 'floating',
-                                animated: true,
-                                style: { stroke: '#94a3b8', strokeWidth: 2 },
+                        const currentState = useCanvasStore.getState();
+                        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                            const node = payload.new as DbNode;
+                            const flowNode: ConversationNode = {
+                                id: node.id,
+                                type: 'conversation',
+                                position: { x: node.position_x, y: node.position_y },
+                                data: {
+                                    role: node.data.role,
+                                    content: node.data.content,
+                                    branchContext: node.data.branchContext,
+                                    authorName: node.data.authorName,
+                                    selectedPersonaId: node.data.selectedPersonaId,
+                                    customPersona: node.data.customPersona,
+                                    modelConfig: node.model_config,
+                                },
                             };
-                            setEdges([...state.edges, flowEdge]);
+
+                            const currentNodes = currentState.nodes;
+                            const existingIndex = currentNodes.findIndex(n => n.id === node.id);
+                            if (existingIndex !== -1) {
+                                const existing = currentNodes[existingIndex];
+                                if (existing.data.content !== flowNode.data.content ||
+                                    Math.abs(existing.position.x - flowNode.position.x) > 1 ||
+                                    Math.abs(existing.position.y - flowNode.position.y) > 1) {
+                                    const nextNodes = [...currentNodes];
+                                    nextNodes[existingIndex] = flowNode;
+                                    setNodes(nextNodes);
+                                }
+                            } else {
+                                setNodes([...currentNodes, flowNode]);
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            setNodes(currentState.nodes.filter(n => n.id !== payload.old.id));
                         }
-                    } else if (payload.eventType === 'DELETE') {
-                        setEdges(state.edges.filter(e => e.id !== payload.old.id));
                     }
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'trees',
-                },
-                (payload) => {
-                    if (payload.new?.id !== treeId) return;
-                    console.log('📡 [Realtime] Tree Update:', payload.new?.name);
+                )
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'edges' },
+                    (payload) => {
+                        const data = (payload.new || payload.old) as any;
+                        if (data?.tree_id !== treeId) return;
 
-                    if (isSavingRef.current) return;
-                    const state = useCanvasStore.getState();
-                    if (payload.new.name !== state.treeName) {
-                        state.setTreeName(payload.new.name);
+                        useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Edge ${payload.eventType}`);
+                        if (isSavingRef.current) return;
+
+                        const currentState = useCanvasStore.getState();
+                        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                            const edge = payload.new as DbEdge;
+                            if (!currentState.edges.find(e => e.id === edge.id)) {
+                                const flowEdge: Edge = {
+                                    id: edge.id!,
+                                    source: edge.source_id,
+                                    target: edge.target_id,
+                                    type: 'floating',
+                                    animated: true,
+                                    style: { stroke: '#94a3b8', strokeWidth: 2 },
+                                };
+                                setEdges([...currentState.edges, flowEdge]);
+                            }
+                        } else if (payload.eventType === 'DELETE') {
+                            setEdges(currentState.edges.filter(e => e.id !== payload.old.id));
+                        }
                     }
-                }
-            )
-            .subscribe((status, err) => {
-                console.log('🔗 [DB Channel] Status:', status);
-                if (err) {
-                    console.error('❌ [DB Channel] Error:', err);
-                    useCanvasStore.getState().setRealtimeStatus('ERROR', err.message);
-                } else {
-                    useCanvasStore.getState().setRealtimeStatus(status as any);
-                }
-            });
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'trees',
+                    },
+                    (payload) => {
+                        if (payload.new?.id !== treeId) return;
+                        console.log('📡 [Realtime] Tree Update:', payload.new?.name);
 
-        // --- CHANNEL 2: PRESENCE (Collaborators) ---
-        const presenceChannel = client.channel(`presence:${treeId}`, {
-            config: { presence: { key: me?.id || 'anonymous' } }
-        });
-
-        presenceChannel
-            .on('presence', { event: 'sync' }, () => {
-                const newState = presenceChannel.presenceState();
-                const flattened: Record<string, any> = {};
-                Object.values(newState).forEach((presences: any) => {
-                    presences.forEach((p: any) => { if (p.id) flattened[p.id] = p; });
+                        if (isSavingRef.current) return;
+                        const state = useCanvasStore.getState();
+                        if (payload.new.name !== state.treeName) {
+                            state.setTreeName(payload.new.name);
+                        }
+                    }
+                )
+                .subscribe((status, err) => {
+                    console.log(`🔗 [DB] ${status}`);
+                    if (err) {
+                        console.error('❌ [DB] Error:', err);
+                        useCanvasStore.getState().setRealtimeStatus('ERROR', err.message);
+                    } else if (status === 'SUBSCRIBED') {
+                        useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED');
+                    }
                 });
-                useCanvasStore.getState().setCollaborators(flattened);
-            })
-            .subscribe(async (status) => {
-                console.log('👥 [Presence Channel] Status:', status);
-                if (status === 'SUBSCRIBED' && me) {
-                    await presenceChannel.track(me);
-                }
+
+            // --- CHANNEL 2: PRESENCE ---
+            const presenceChannel = client.channel(`presence-${treeId}`, {
+                config: { presence: { key: useCanvasStore.getState().me?.id || 'anon' } }
             });
+            presenceChannelRef.current = presenceChannel;
+
+            presenceChannel
+                .on('presence', { event: 'sync' }, () => {
+                    const newState = presenceChannel.presenceState();
+                    const flattened: Record<string, any> = {};
+                    Object.values(newState).forEach((presences: any) => {
+                        presences.forEach((p: any) => { if (p.id) flattened[p.id] = p; });
+                    });
+                    useCanvasStore.getState().setCollaborators(flattened);
+                })
+                .subscribe(async (status) => {
+                    console.log(`👥 [Presence] ${status}`);
+                    const me = useCanvasStore.getState().me;
+                    if (status === 'SUBSCRIBED' && me) {
+                        await presenceChannel.track(me);
+                    }
+                });
+        }, 100);
 
         return () => {
-            console.log('🔌 [Realtime] Cleaning up channels...');
-            client.removeChannel(dbChannel);
-            client.removeChannel(presenceChannel);
+            clearTimeout(timeoutId);
+            console.log('🔌 [Realtime] Closing channels...');
+            if (dbChannelRef.current) {
+                console.log('🔌 [Realtime] Resetting DB channel...');
+                client.removeChannel(dbChannelRef.current);
+                dbChannelRef.current = null;
+            }
+            if (presenceChannelRef.current) {
+                console.log('🔌 [Realtime] Resetting Presence channel...');
+                client.removeChannel(presenceChannelRef.current);
+                presenceChannelRef.current = null;
+            }
         };
-    }, [treeId, loadTree, setNodes, setEdges, me?.id]);
+    }, [treeId, loadTree, setNodes, setEdges]); // EXTREMELY STABLE DEPENDENCIES
 
     // Update URL when treeId changes
     useEffect(() => {
