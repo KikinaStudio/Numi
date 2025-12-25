@@ -341,9 +341,16 @@ export function usePersistence() {
                     event: '*',
                     schema: 'public',
                     table: 'nodes',
-                    filter: `tree_id=eq.${treeId}`,
                 },
                 (payload) => {
+                    const newId = (payload.new as any)?.id;
+                    const oldId = (payload.old as any)?.id;
+                    const nodeTreeId = (payload.new as any)?.tree_id || (payload.old as any)?.tree_id;
+
+                    // Filter locally by treeId
+                    if (nodeTreeId !== treeId) return;
+
+                    console.log('📡 [Realtime] Node Change (current tree):', payload.eventType, newId || oldId);
                     // Ignore if we are the one who sent this (via isSavingRef)
                     if (isSavingRef.current) return;
 
@@ -396,9 +403,12 @@ export function usePersistence() {
                     event: '*',
                     schema: 'public',
                     table: 'edges',
-                    filter: `tree_id=eq.${treeId}`,
                 },
                 (payload) => {
+                    const edgeTreeId = (payload.new as any)?.tree_id || (payload.old as any)?.tree_id;
+                    if (edgeTreeId !== treeId) return;
+
+                    console.log('📡 [Realtime] Edge Change (current tree):', payload.eventType);
                     if (isSavingRef.current) return;
 
                     const currentEdges = useCanvasStore.getState().edges;
@@ -431,9 +441,10 @@ export function usePersistence() {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'trees',
-                    filter: `id=eq.${treeId}`,
                 },
                 (payload) => {
+                    if (payload.new?.id !== treeId) return;
+                    console.log('📡 [Realtime] Tree Update:', payload.new?.name);
                     if (isSavingRef.current) return;
                     const { treeName: currentName, setTreeName } = useCanvasStore.getState();
                     if (payload.new.name !== currentName) {
@@ -446,6 +457,7 @@ export function usePersistence() {
         channel
             .on('presence', { event: 'sync' }, () => {
                 const newState = channel.presenceState();
+                console.log('👥 [Realtime] Presence Sync:', Object.keys(newState).length, 'users');
                 const flattened: Record<string, any> = {};
 
                 // Presence state is an object of keys (user IDs), each containing an array of presence objects
@@ -457,7 +469,9 @@ export function usePersistence() {
 
                 useCanvasStore.getState().setCollaborators(flattened);
             })
-            .subscribe(async (status) => {
+            .subscribe(async (status, err) => {
+                console.log('🔗 [Realtime] Status:', status);
+                if (err) console.error('❌ [Realtime] Subscription Error:', err);
                 if (status === 'SUBSCRIBED' && me) {
                     await channel.track(me);
                 }
