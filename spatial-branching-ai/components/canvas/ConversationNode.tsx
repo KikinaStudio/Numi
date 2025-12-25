@@ -23,7 +23,7 @@ import {
 function ConversationNodeComponent(props: NodeProps) {
     const { id, data, selected } = props;
     const nodeData = data as ConversationNodeData;
-    const { theme } = useSettingsStore();
+    const { theme, userName } = useSettingsStore();
 
     const contentRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -152,11 +152,6 @@ function ConversationNodeComponent(props: NodeProps) {
                 nodeData.isGenerating && 'animate-pulse'
             )}
         >
-            <Handle
-                type="target"
-                position={Position.Top}
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background"
-            />
 
             <div className={cn(
                 'flex items-center gap-2 px-4 py-2 border-b rounded-t-xl',
@@ -169,13 +164,17 @@ function ConversationNodeComponent(props: NodeProps) {
                     isAssistant && 'bg-emerald-500/20'
                 )}>
                     {isUser ? (
-                        <User className="h-4 w-4 text-blue-400" />
+                        <div className="h-4 w-4 flex items-center justify-center">
+                            <span className="text-[10px] font-bold text-blue-500 leading-none">
+                                {(userName || 'U').charAt(0).toUpperCase()}
+                            </span>
+                        </div>
                     ) : (
                         <Bot className="h-4 w-4 text-emerald-400" />
                     )}
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
-                    {isUser ? 'You' : (
+                    {isUser ? (userName || 'You') : (
                         nodeData.selectedPersonaId
                             ? PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Assistant'
                             : 'Assistant'

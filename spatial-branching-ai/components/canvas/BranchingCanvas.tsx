@@ -237,10 +237,10 @@ function Canvas() {
     // Default edge options for consistent styling  
     const defaultEdgeOptions = useMemo(() => ({
         type: 'floating',
-        animated: true,
+        animated: false,
         style: {
-            stroke: theme === 'dark' ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.5)',
-            strokeWidth: 2,
+            stroke: theme === 'dark' ? 'hsl(var(--muted-foreground) / 0.4)' : 'hsl(var(--muted-foreground) / 0.2)',
+            strokeWidth: 1.5,
         },
     }), [theme]);
 
@@ -338,6 +338,10 @@ function Canvas() {
                                 onClick={() => {
                                     clearCanvas();
                                     setTreeName('New Conversation');
+                                    // Clear URL to prevent re-loading the previous tree
+                                    const url = new URL(window.location.href);
+                                    url.searchParams.delete('treeId');
+                                    window.history.pushState({}, '', url.toString());
                                 }}
                                 title="New Conversation"
                             >

@@ -9,21 +9,21 @@ export function cn(...inputs: ClassValue[]) {
 // Floating Edge Utils
 function getNodeIntersection(intersectionNode: InternalNode, targetNode: InternalNode) {
   // https://math.stackexchange.com/questions/1724792/an-algorithm-for-finding-the-intersection-point-between-a-center-of-rectangle-and
-  const { width: intersectionNodeWidth, height: intersectionNodeHeight } = intersectionNode.measured;
+  const width = intersectionNode.measured?.width ?? 350;
+  const height = intersectionNode.measured?.height ?? 150;
+  const targetWidth = targetNode.measured?.width ?? 350;
+  const targetHeight = targetNode.measured?.height ?? 150;
+
   const intersectionNodePosition = intersectionNode.internals.positionAbsolute;
   const targetPosition = targetNode.internals.positionAbsolute;
 
-  if (!intersectionNodeWidth || !intersectionNodeHeight || !targetNode.measured.width || !targetNode.measured.height) {
-    return { x: 0, y: 0 };
-  }
-
-  const w = intersectionNodeWidth / 2;
-  const h = intersectionNodeHeight / 2;
+  const w = width / 2;
+  const h = height / 2;
 
   const x2 = intersectionNodePosition.x + w;
   const y2 = intersectionNodePosition.y + h;
-  const x1 = targetPosition.x + targetNode.measured.width! / 2;
-  const y1 = targetPosition.y + targetNode.measured.height! / 2;
+  const x1 = targetPosition.x + targetWidth / 2;
+  const y1 = targetPosition.y + targetHeight / 2;
 
   const xx1 = (x1 - x2) / (2 * w) - (y1 - y2) / (2 * h);
   const yy1 = (x1 - x2) / (2 * w) + (y1 - y2) / (2 * h);
@@ -59,17 +59,19 @@ function getEdgePosition(node: InternalNode, intersectionPoint: { x: number; y: 
   const ny = Math.round(n.y);
   const px = Math.round(intersectionPoint.x);
   const py = Math.round(intersectionPoint.y);
+  const width = n.width ?? 350;
+  const height = n.height ?? 150;
 
   if (px <= nx + 1) {
     return Position.Left;
   }
-  if (px >= nx + n.width! - 1) {
+  if (px >= nx + width - 1) {
     return Position.Right;
   }
   if (py <= ny + 1) {
     return Position.Top;
   }
-  if (py >= ny + n.height! - 1) {
+  if (py >= ny + height - 1) {
     return Position.Bottom;
   }
 

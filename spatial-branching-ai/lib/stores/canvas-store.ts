@@ -165,7 +165,7 @@ export const useCanvasStore = create<CanvasState>()(
                         {
                             ...connection,
                             id: `edge-${connection.source}-${connection.target}`,
-                            type: 'smoothstep',
+                            type: 'floating',
                             animated: true,
                         },
                         state.edges
@@ -281,7 +281,7 @@ export const useCanvasStore = create<CanvasState>()(
                     id: `edge-${parentId}-${id}`,
                     source: parentId,
                     target: id,
-                    type: 'smoothstep',
+                    type: 'floating',
                     animated: true,
                     style: { stroke: '#94a3b8', strokeWidth: 2 }, // slate-400
                 };

@@ -246,7 +246,7 @@ export function usePersistence() {
                 id: edge.id || `edge-${edge.source_id}-${edge.target_id}`,
                 source: edge.source_id,
                 target: edge.target_id,
-                type: 'smoothstep',
+                type: 'floating',
                 animated: true,
                 style: { stroke: '#94a3b8', strokeWidth: 2 }, // slate-400
             }));
@@ -391,7 +391,7 @@ export function usePersistence() {
                             id: edge.id || `edge-${edge.source_id}-${edge.target_id}`,
                             source: edge.source_id,
                             target: edge.target_id,
-                            type: 'smoothstep',
+                            type: 'floating',
                             animated: true,
                             style: { stroke: '#94a3b8', strokeWidth: 2 },
                         };
