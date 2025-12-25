@@ -483,7 +483,16 @@ export function usePersistence() {
         };
     }, [treeId, loadTree, setNodes, setEdges, me?.id]);
 
-    // Simplified presence tracking is now handled in the main channel subscription
+    // Separate effect for Presence Tracking (Me) - Ensures updates (like cursors) are sent
+    useEffect(() => {
+        const channel = channelRef.current;
+        if (channel && me) {
+            // Debounce or verify connection state if needed, but track() handles internal throttling
+            channel.track(me).catch((err: any) => {
+                console.error('❌ [Realtime] Track Error:', err);
+            });
+        }
+    }, [me, treeId]);
 
     // Update URL when treeId changes
     useEffect(() => {
