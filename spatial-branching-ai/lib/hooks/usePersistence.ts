@@ -124,15 +124,13 @@ export function usePersistence() {
                 currentTreeId = tree.id;
                 setTreeId(currentTreeId);
 
-                // Log access for the owner immediately
+                // Add creator to tree_members
                 if (me?.id) {
-                    await supabase
-                        .from('tree_access')
-                        .upsert({
-                            tree_id: currentTreeId,
-                            user_id: me.id,
-                            last_accessed_at: new Date().toISOString()
-                        });
+                    await supabase.from('tree_members').insert({
+                        tree_id: currentTreeId,
+                        user_id: me.id,
+                        last_accessed_at: new Date().toISOString()
+                    });
                 }
             } else {
                 // Update name and touch updated_at
@@ -243,6 +241,15 @@ export function usePersistence() {
                 .single();
             if (treeError) throw treeError;
 
+            // 1.5. Track Visit (Join Tree)
+            if (useCanvasStore.getState().me?.id) {
+                await supabase.from('tree_members').upsert({
+                    tree_id: id,
+                    user_id: useCanvasStore.getState().me!.id,
+                    last_accessed_at: new Date().toISOString()
+                });
+            }
+
             // 2. Fetch Nodes
             const { data: dbNodes, error: nodesError } = await supabase
                 .from('nodes')
@@ -294,19 +301,6 @@ export function usePersistence() {
 
             // 7. Update lastSavedRef to prevent immediate auto-save after loading
             lastSavedRef.current = serializeState(flowNodes, flowEdges, tree.name);
-
-            // 8. Log Access (for shared list)
-            const settings = (await import('@/lib/stores/settings-store')).useSettingsStore.getState();
-            const currentUserId = settings.userId;
-            if (currentUserId && supabase) {
-                await supabase
-                    .from('tree_access')
-                    .upsert({
-                        tree_id: tree.id,
-                        user_id: currentUserId,
-                        last_accessed_at: new Date().toISOString()
-                    });
-            }
 
         } catch (error) {
             console.error('Error loading tree:', error);

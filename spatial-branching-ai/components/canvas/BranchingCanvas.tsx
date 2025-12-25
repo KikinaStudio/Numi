@@ -387,25 +387,16 @@ function Canvas() {
                             <div className="relative group">
                                 <Input
                                     value={treeName}
-                                    onChange={(e) => isOwner && setTreeName(e.target.value)}
-                                    onFocus={(e) => isOwner && e.target.select()}
+                                    onChange={(e) => setTreeName(e.target.value)}
+                                    onFocus={(e) => e.target.select()}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.currentTarget.blur();
                                         }
                                     }}
-                                    readOnly={!isOwner}
-                                    className={cn(
-                                        "h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium",
-                                        !isOwner ? "cursor-default opacity-80" : "cursor-text"
-                                    )}
+                                    className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium cursor-text"
                                     placeholder="Conversation Title"
                                 />
-                                {!isOwner && (
-                                    <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none opacity-40">
-                                        <Lock className="h-3 w-3" />
-                                    </div>
-                                )}
                             </div>
                             <div className="flex items-center gap-2 pl-2 border-l border-border">
                                 <Button
