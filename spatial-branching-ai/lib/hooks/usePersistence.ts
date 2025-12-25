@@ -323,41 +323,22 @@ export function usePersistence() {
 
         if (!treeId) return;
 
-        // Presence & Realtime Channel
+        // --- CHANNEL 1: DATA SYNC (Postgres Changes) ---
         useCanvasStore.getState().setRealtimeStatus('CONNECTING');
-        const channel = client.channel(`tree:${treeId}`, {
-            config: {
-                presence: {
-                    key: me?.id || 'anonymous',
-                },
-            },
-        });
-        channelRef.current = channel;
+        const dbChannel = client.channel(`db-sync:${treeId}`);
 
-        // 1. Listen for Database Changes
-        channel
+        dbChannel
             .on(
                 'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'nodes',
-                },
+                { event: '*', schema: 'public', table: 'nodes' },
                 (payload) => {
-                    const newId = (payload.new as any)?.id;
-                    const oldId = (payload.old as any)?.id;
-                    const nodeTreeId = (payload.new as any)?.tree_id || (payload.old as any)?.tree_id;
-
-                    // Filter locally by treeId
-                    if (nodeTreeId !== treeId) return;
+                    const data = (payload.new || payload.old) as any;
+                    if (data?.tree_id !== treeId) return;
 
                     useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Node ${payload.eventType}`);
-                    console.log('📡 [Realtime] Node Change (current tree):', payload.eventType, newId || oldId);
-                    // Ignore if we are the one who sent this (via isSavingRef)
                     if (isSavingRef.current) return;
 
-                    const currentNodes = useCanvasStore.getState().nodes;
-
+                    const state = useCanvasStore.getState();
                     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                         const node = payload.new as DbNode;
                         const flowNode: ConversationNode = {
@@ -373,68 +354,51 @@ export function usePersistence() {
                             },
                         };
 
-                        const existingNodeIndex = currentNodes.findIndex(n => n.id === node.id);
-                        if (existingNodeIndex !== -1) {
-                            // Only update if content or position actually changed to avoid jitter
-                            const existing = currentNodes[existingNodeIndex];
-                            const hasChanged =
-                                existing.data.content !== flowNode.data.content ||
-                                existing.position.x !== flowNode.position.x ||
-                                existing.position.y !== flowNode.position.y ||
-                                existing.data.role !== flowNode.data.role ||
-                                existing.data.authorName !== flowNode.data.authorName ||
-                                existing.data.selectedPersonaId !== flowNode.data.selectedPersonaId ||
-                                JSON.stringify(existing.data.customPersona) !== JSON.stringify(flowNode.data.customPersona);
-
-                            if (hasChanged) {
-                                const updatedNodes = [...currentNodes];
-                                updatedNodes[existingNodeIndex] = flowNode;
-                                setNodes(updatedNodes);
+                        const currentNodes = state.nodes;
+                        const existingIndex = currentNodes.findIndex(n => n.id === node.id);
+                        if (existingIndex !== -1) {
+                            const existing = currentNodes[existingIndex];
+                            if (existing.data.content !== flowNode.data.content ||
+                                Math.abs(existing.position.x - flowNode.position.x) > 1 ||
+                                Math.abs(existing.position.y - flowNode.position.y) > 1) {
+                                const nextNodes = [...currentNodes];
+                                nextNodes[existingIndex] = flowNode;
+                                setNodes(nextNodes);
                             }
                         } else {
                             setNodes([...currentNodes, flowNode]);
                         }
                     } else if (payload.eventType === 'DELETE') {
-                        setNodes(currentNodes.filter(n => n.id !== payload.old.id));
+                        setNodes(state.nodes.filter(n => n.id !== payload.old.id));
                     }
                 }
             )
             .on(
                 'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'edges',
-                },
+                { event: '*', schema: 'public', table: 'edges' },
                 (payload) => {
-                    const edgeTreeId = (payload.new as any)?.tree_id || (payload.old as any)?.tree_id;
-                    if (edgeTreeId !== treeId) return;
+                    const data = (payload.new || payload.old) as any;
+                    if (data?.tree_id !== treeId) return;
 
                     useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED', `Edge ${payload.eventType}`);
-                    console.log('📡 [Realtime] Edge Change (current tree):', payload.eventType);
                     if (isSavingRef.current) return;
 
-                    const currentEdges = useCanvasStore.getState().edges;
-
+                    const state = useCanvasStore.getState();
                     if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                         const edge = payload.new as DbEdge;
-                        const flowEdge: Edge = {
-                            id: edge.id || `edge-${edge.source_id}-${edge.target_id}`,
-                            source: edge.source_id,
-                            target: edge.target_id,
-                            type: 'floating',
-                            animated: true,
-                            style: { stroke: '#94a3b8', strokeWidth: 2 },
-                        };
-
-                        if (!currentEdges.find(e => e.id === flowEdge.id)) {
-                            setEdges([...currentEdges, flowEdge]);
+                        if (!state.edges.find(e => e.id === edge.id)) {
+                            const flowEdge: Edge = {
+                                id: edge.id!,
+                                source: edge.source_id,
+                                target: edge.target_id,
+                                type: 'floating',
+                                animated: true,
+                                style: { stroke: '#94a3b8', strokeWidth: 2 },
+                            };
+                            setEdges([...state.edges, flowEdge]);
                         }
                     } else if (payload.eventType === 'DELETE') {
-                        setEdges(currentEdges.filter(e =>
-                            e.id !== payload.old.id &&
-                            (e.source !== payload.old.source_id || e.target !== payload.old.target_id)
-                        ));
+                        setEdges(state.edges.filter(e => e.id !== payload.old.id));
                     }
                 }
             )
@@ -448,52 +412,51 @@ export function usePersistence() {
                 (payload) => {
                     if (payload.new?.id !== treeId) return;
                     console.log('📡 [Realtime] Tree Update:', payload.new?.name);
+
                     if (isSavingRef.current) return;
-                    const { treeName: currentName, setTreeName } = useCanvasStore.getState();
-                    if (payload.new.name !== currentName) {
-                        setTreeName(payload.new.name);
+                    const state = useCanvasStore.getState();
+                    if (payload.new.name !== state.treeName) {
+                        state.setTreeName(payload.new.name);
                     }
                 }
-            );
-
-        // 2. Presence Tracking (Online Users)
-        channel
-            .on('presence', { event: 'sync' }, () => {
-                const newState = channel.presenceState();
-                console.log('👥 [Realtime] Presence Sync:', Object.keys(newState).length, 'users');
-                const flattened: Record<string, any> = {};
-
-                // Presence state is an object of keys (user IDs), each containing an array of presence objects
-                Object.values(newState).forEach((presences: any) => {
-                    presences.forEach((p: any) => {
-                        if (p.id) flattened[p.id] = p;
-                    });
-                });
-
-                useCanvasStore.getState().setCollaborators(flattened);
-            })
-            .subscribe(async (status, err) => {
-                console.log('🔗 [Realtime] Status:', status);
-
+            )
+            .subscribe((status, err) => {
+                console.log('🔗 [DB Channel] Status:', status);
                 if (err) {
-                    console.error('❌ [Realtime] Subscription Error:', err);
+                    console.error('❌ [DB Channel] Error:', err);
                     useCanvasStore.getState().setRealtimeStatus('ERROR', err.message);
                 } else {
                     useCanvasStore.getState().setRealtimeStatus(status as any);
                 }
+            });
 
+        // --- CHANNEL 2: PRESENCE (Collaborators) ---
+        const presenceChannel = client.channel(`presence:${treeId}`, {
+            config: { presence: { key: me?.id || 'anonymous' } }
+        });
+
+        presenceChannel
+            .on('presence', { event: 'sync' }, () => {
+                const newState = presenceChannel.presenceState();
+                const flattened: Record<string, any> = {};
+                Object.values(newState).forEach((presences: any) => {
+                    presences.forEach((p: any) => { if (p.id) flattened[p.id] = p; });
+                });
+                useCanvasStore.getState().setCollaborators(flattened);
+            })
+            .subscribe(async (status) => {
+                console.log('👥 [Presence Channel] Status:', status);
                 if (status === 'SUBSCRIBED' && me) {
-                    await channel.track(me);
+                    await presenceChannel.track(me);
                 }
             });
 
         return () => {
-            client.removeChannel(channel);
-            channelRef.current = null;
+            console.log('🔌 [Realtime] Cleaning up channels...');
+            client.removeChannel(dbChannel);
+            client.removeChannel(presenceChannel);
         };
     }, [treeId, loadTree, setNodes, setEdges, me?.id]);
-
-    // Simplified presence tracking is now handled in the main channel subscription
 
     // Update URL when treeId changes
     useEffect(() => {
