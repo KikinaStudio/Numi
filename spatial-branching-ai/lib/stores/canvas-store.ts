@@ -19,6 +19,9 @@ export interface ConversationNodeData extends Record<string, unknown> {
     content: string;
     branchContext?: string; // Selected text that triggered this branch
     isGenerating?: boolean;
+    fileUrl?: string; // For images/files
+    fileName?: string;
+    mimeType?: string;
     modelConfig?: {
         model?: string;
         temperature?: number;
