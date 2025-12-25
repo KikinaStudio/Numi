@@ -137,7 +137,7 @@ function ConversationNodeComponent(props: NodeProps) {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={cn(
-                'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out',
+                'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out relative',
                 'hover:shadow-2xl',
                 'w-[450px]',
                 !selected && !isHovered && nodeData.hasChildren && isAssistant && 'w-[250px]',
@@ -194,7 +194,7 @@ function ConversationNodeComponent(props: NodeProps) {
 
             {nodeData.branchContext && (
                 <div className="px-4 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-3 group transition-colors hover:bg-blue-500/10">
-                    <Scissors className="h-4 w-4 text-blue-500 shrink-0" />
+                    <GitBranch className="h-4 w-4 text-blue-500 shrink-0" />
                     <p className="text-[15px] text-foreground leading-relaxed font-medium">
                         {nodeData.branchContext}
                     </p>
@@ -330,9 +330,28 @@ function ConversationNodeComponent(props: NodeProps) {
 
 
             <Handle
+                type="target"
+                position={Position.Top}
+                id="t"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
+            />
+            <Handle
                 type="source"
                 position={Position.Bottom}
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background"
+                id="b"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
+            />
+            <Handle
+                type="target"
+                position={Position.Left}
+                id="l"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
+            />
+            <Handle
+                type="source"
+                position={Position.Right}
+                id="r"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
             />
         </div>
     );
