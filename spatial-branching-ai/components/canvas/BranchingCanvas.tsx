@@ -27,6 +27,12 @@ import { TreeListDialog } from './TreeListDialog';
 import { SettingsDialog } from '@/components/ui/settings-dialog';
 import { UserOnboardingModal } from './UserOnboardingModal';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
@@ -298,225 +304,232 @@ function Canvas() {
     }), [theme]);
 
     return (
-        <div ref={reactFlowWrapper} className="w-full h-full">
-            <ReactFlow
-                nodes={nodesWithMetadata}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onPointerMove={handlePointerMove}
-                onPaneClick={onPaneClick}
-                onDoubleClick={onPaneDoubleClick}
-                onNodeContextMenu={onNodeContextMenu}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
-                defaultEdgeOptions={defaultEdgeOptions}
-                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-                snapToGrid
-                snapGrid={[20, 20]}
-                minZoom={0.1}
-                maxZoom={2}
-                panOnScroll
-                zoomOnScroll={false}
-                zoomOnDoubleClick={false}
-                zoomOnPinch
-                attributionPosition="bottom-left"
-                proOptions={{ hideAttribution: true }}
-            >
-                <Background
-                    variant={BackgroundVariant.Dots}
-                    gap={20}
-                    size={1}
-                    color={theme === 'dark' ? "hsl(var(--muted-foreground) / 0.3)" : "hsl(var(--muted-foreground) / 0.15)"}
-                />
-                <Controls
-                    className="!bg-card !border !border-border !rounded-lg !shadow-lg"
-                    showInteractive={false}
-                />
-                <MiniMap
-                    className="!bg-card/80 !border !border-border !rounded-lg !shadow-lg backdrop-blur-sm"
-                    nodeColor={(node) => {
-                        const data = node.data as ConversationNodeData;
-                        return data?.role === 'user'
-                            ? 'hsl(217.2 91.2% 59.8%)' // blue
-                            : 'hsl(160.1 84.1% 39.4%)'; // emerald
-                    }}
-                    maskColor={theme === 'dark' ? "hsl(var(--background) / 0.7)" : "hsl(var(--background) / 0.4)"}
-                    pannable
-                    zoomable
-                />
+        <TooltipProvider>
+            <div ref={reactFlowWrapper} className="w-full h-full">
+                <ReactFlow
+                    nodes={nodesWithMetadata}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onPointerMove={handlePointerMove}
+                    onPaneClick={onPaneClick}
+                    onDoubleClick={onPaneDoubleClick}
+                    onNodeContextMenu={onNodeContextMenu}
+                    nodeTypes={nodeTypes}
+                    edgeTypes={edgeTypes}
+                    defaultEdgeOptions={defaultEdgeOptions}
+                    defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                    snapToGrid
+                    snapGrid={[20, 20]}
+                    minZoom={0.1}
+                    maxZoom={2}
+                    panOnScroll
+                    zoomOnScroll={false}
+                    zoomOnDoubleClick={false}
+                    zoomOnPinch
+                    attributionPosition="bottom-left"
+                    proOptions={{ hideAttribution: true }}
+                >
+                    <Background
+                        variant={BackgroundVariant.Dots}
+                        gap={20}
+                        size={1}
+                        color={theme === 'dark' ? "hsl(var(--muted-foreground) / 0.3)" : "hsl(var(--muted-foreground) / 0.15)"}
+                    />
+                    <Controls
+                        className="!bg-card !border !border-border !rounded-lg !shadow-lg"
+                        showInteractive={false}
+                    />
+                    <MiniMap
+                        className="!bg-card/80 !border !border-border !rounded-lg !shadow-lg backdrop-blur-sm"
+                        nodeColor={(node) => {
+                            const data = node.data as ConversationNodeData;
+                            return data?.role === 'user'
+                                ? 'hsl(217.2 91.2% 59.8%)' // blue
+                                : 'hsl(160.1 84.1% 39.4%)'; // emerald
+                        }}
+                        maskColor={theme === 'dark' ? "hsl(var(--background) / 0.7)" : "hsl(var(--background) / 0.4)"}
+                        pannable
+                        zoomable
+                    />
 
-                {/* Empty State Prompt */}
-                {nodes.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                        <div className="flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-500">
-                            <div className="bg-primary/10 p-4 rounded-full mb-4 ring-1 ring-primary/20 shadow-lg backdrop-blur-sm">
-                                <MousePointerClick className="h-8 w-8 text-primary animate-pulse" />
+                    {/* Empty State Prompt */}
+                    {nodes.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                            <div className="flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-500">
+                                <div className="bg-primary/10 p-4 rounded-full mb-4 ring-1 ring-primary/20 shadow-lg backdrop-blur-sm">
+                                    <MousePointerClick className="h-8 w-8 text-primary animate-pulse" />
+                                </div>
+                                <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60 mb-2">
+                                    Start Thinking
+                                </h3>
+                                <p className="text-muted-foreground text-sm max-w-[200px]">
+                                    Double-click anywhere on the canvas to begin a new conversation tree.
+                                </p>
                             </div>
-                            <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60 mb-2">
-                                Start Thinking
-                            </h3>
-                            <p className="text-muted-foreground text-sm max-w-[200px]">
-                                Double-click anywhere on the canvas to begin a new conversation tree.
-                            </p>
+                        </div>
+                    )}
+
+
+                    {/* Tree Name Panel */}
+                    <Panel position="top-left" className="m-4">
+                        <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
+                            <div className="flex items-center gap-2 pr-3 border-r border-border">
+                                <img src="/numi-tree-logo.png" alt="Numi" className="h-6 w-auto" />
+                            </div>
+                            <Input
+                                value={treeName}
+                                onChange={(e) => setTreeName(e.target.value)}
+                                onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.currentTarget.blur();
+                                    }
+                                }}
+                                className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium"
+                                placeholder="Conversation Title"
+                            />
+                            <div className="flex items-center gap-2 pl-2 border-l border-border">
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                        clearCanvas();
+                                        setTreeName('New Conversation');
+                                        // Clear URL to prevent re-loading the previous tree
+                                        const url = new URL(window.location.href);
+                                        url.searchParams.delete('treeId');
+                                        window.history.pushState({}, '', url.toString());
+                                    }}
+                                    title="New Conversation"
+                                >
+                                    <FilePlus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={() => setShowTreeList(true)}
+                                    title="Open saved conversations"
+                                >
+                                    <FolderOpen className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </Panel>
+
+                    {/* Top Right Controls: Collaborators & Profile */}
+                    <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
+                        {/* Collaborators List (Including Me) */}
+                        {Object.keys(collaborators).length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center -space-x-3">
+                                    {Object.values(collaborators).map((c) => {
+                                        const initials = c.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                                        return (
+                                            <Tooltip key={c.id}>
+                                                <TooltipTrigger asChild>
+                                                    <div
+                                                        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[11px] font-extrabold text-white shadow-lg hover:translate-y-[-2px] hover:z-20 transition-all cursor-pointer duration-200"
+                                                        style={{ backgroundColor: c.color }}
+                                                    >
+                                                        <span className="leading-none drop-shadow-sm">{initials || '?'}</span>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="bottom" sideOffset={10} className="font-bold">
+                                                    <p>{c.name} {c.id === me?.id ? '(You)' : ''}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex items-center px-4 h-10 bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md border border-white/10 rounded-full shadow-lg text-[12px] font-bold text-white whitespace-nowrap">
+                                    <Users className="h-3.5 w-3.5 mr-2 opacity-70" />
+                                    {Object.keys(collaborators).length}
+                                </div>
+                            </div>
+                        )}
+                    </Panel>
+
+
+
+                    <Panel position="bottom-center" className="mb-4">
+                        <div className="flex items-center gap-2 p-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={() => setShowSettings(true)}
+                                title="Settings (API Keys & Models)"
+                            >
+                                <Settings className="h-4 w-4" />
+                                Settings
+                            </Button>
+                            <div className="w-px h-6 bg-border" />
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={handleShare}
+                                title="Share Link"
+                            >
+                                <Share2 className="h-4 w-4" />
+                                Share
+                            </Button>
+                        </div>
+                    </Panel>
+
+
+                    {/* Diagnostics Panel for Realtime Debugging */}
+                    <DiagnosticsPanel />
+                </ReactFlow >
+
+                {/* Context Menu */}
+                {
+                    contextMenu && (
+                        <NodeContextMenu
+                            x={contextMenu.x}
+                            y={contextMenu.y}
+                            nodeId={contextMenu.nodeId}
+                            nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
+                            hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
+                            selectedText={textSelection?.text}
+                            onCreateBranch={handleCreateBranch}
+                            onRegenerate={handleRegenerate}
+                            onCopy={handleCopy}
+                            onDelete={handleDelete}
+                            onClose={handleCloseContextMenu}
+                        />
+                    )
+                }
+
+                {/* Share Confirmation Toast */}
+                {showShareToast && (
+                    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-sm border border-primary-foreground/10 backdrop-blur-md">
+                            <Check className="h-4 w-4" />
+                            Lien copié dans le presse-papiers !
                         </div>
                     </div>
                 )}
 
-
-                {/* Tree Name Panel */}
-                <Panel position="top-left" className="m-4">
-                    <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
-                        <div className="flex items-center gap-2 pr-3 border-r border-border">
-                            <img src="/numi-tree-logo.png" alt="Numi" className="h-6 w-auto" />
-                        </div>
-                        <Input
-                            value={treeName}
-                            onChange={(e) => setTreeName(e.target.value)}
-                            onFocus={(e) => e.target.select()}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.currentTarget.blur();
-                                }
-                            }}
-                            className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium"
-                            placeholder="Conversation Title"
-                        />
-                        <div className="flex items-center gap-2 pl-2 border-l border-border">
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => {
-                                    clearCanvas();
-                                    setTreeName('New Conversation');
-                                    // Clear URL to prevent re-loading the previous tree
-                                    const url = new URL(window.location.href);
-                                    url.searchParams.delete('treeId');
-                                    window.history.pushState({}, '', url.toString());
-                                }}
-                                title="New Conversation"
-                            >
-                                <FilePlus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => setShowTreeList(true)}
-                                title="Open saved conversations"
-                            >
-                                <FolderOpen className="h-4 w-4" />
-                            </Button>
+                {/* Initial Loading Overlay */}
+                {isLoading && (
+                    <div className="fixed inset-0 z-[2000] bg-background/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+                        <div className="flex flex-col items-center gap-4">
+                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                            <p className="text-sm font-bold text-muted-foreground animate-pulse">Chargement de la conversation...</p>
                         </div>
                     </div>
-                </Panel>
+                )}
 
-                {/* Top Right Controls: Collaborators & Profile */}
-                <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
-                    {/* Collaborators List (Including Me) */}
-                    {Object.keys(collaborators).length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center -space-x-2">
-                                {Object.values(collaborators).map((c) => {
-                                    const initials = c.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                                    return (
-                                        <div
-                                            key={c.id}
-                                            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[11px] font-extrabold text-white shadow-md hover:z-20 transition-all cursor-default"
-                                            style={{ backgroundColor: c.color }}
-                                            title={c.name}
-                                        >
-                                            <span className="leading-none">{initials || '?'}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="flex items-center px-3 h-9 bg-card/90 backdrop-blur-md border border-border rounded-full shadow-sm text-[11px] font-bold text-muted-foreground whitespace-nowrap">
-                                <Users className="h-3.5 w-3.5 mr-1.5" />
-                                {Object.keys(collaborators).length}
-                            </div>
-                        </div>
-                    )}
-                </Panel>
-
-
-
-                <Panel position="bottom-center" className="mb-4">
-                    <div className="flex items-center gap-2 p-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-2"
-                            onClick={() => setShowSettings(true)}
-                            title="Settings (API Keys & Models)"
-                        >
-                            <Settings className="h-4 w-4" />
-                            Settings
-                        </Button>
-                        <div className="w-px h-6 bg-border" />
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-2"
-                            onClick={handleShare}
-                            title="Share Link"
-                        >
-                            <Share2 className="h-4 w-4" />
-                            Share
-                        </Button>
-                    </div>
-                </Panel>
-
-
-                {/* Diagnostics Panel for Realtime Debugging */}
-                <DiagnosticsPanel />
-            </ReactFlow >
-
-            {/* Context Menu */}
-            {
-                contextMenu && (
-                    <NodeContextMenu
-                        x={contextMenu.x}
-                        y={contextMenu.y}
-                        nodeId={contextMenu.nodeId}
-                        nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
-                        hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
-                        selectedText={textSelection?.text}
-                        onCreateBranch={handleCreateBranch}
-                        onRegenerate={handleRegenerate}
-                        onCopy={handleCopy}
-                        onDelete={handleDelete}
-                        onClose={handleCloseContextMenu}
-                    />
-                )
-            }
-
-            {/* Share Confirmation Toast */}
-            {showShareToast && (
-                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
-                    <div className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-sm border border-primary-foreground/10 backdrop-blur-md">
-                        <Check className="h-4 w-4" />
-                        Lien copié dans le presse-papiers !
-                    </div>
-                </div>
-            )}
-
-            {/* Initial Loading Overlay */}
-            {isLoading && (
-                <div className="fixed inset-0 z-[2000] bg-background/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
-                    <div className="flex flex-col items-center gap-4">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                        <p className="text-sm font-bold text-muted-foreground animate-pulse">Chargement de la conversation...</p>
-                    </div>
-                </div>
-            )}
-
-            <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
-            <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-            <UserOnboardingModal open={showOnboarding} onOpenChange={setShowOnboarding} />
-        </div >
+                <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
+                <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+                <UserOnboardingModal open={showOnboarding} onOpenChange={setShowOnboarding} />
+            </div>
+        </TooltipProvider>
     );
 }
 
