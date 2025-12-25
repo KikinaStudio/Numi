@@ -129,15 +129,31 @@ function Canvas() {
         const randomName = names[Math.floor(Math.random() * names.length)];
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-        const me = {
+        const initialName = useSettingsStore.getState().userName || randomName;
+
+        const meObject = {
             id: guestId,
-            name: `${randomName} (You)`,
+            name: initialName,
             color: randomColor,
             lastActive: Date.now()
         };
-        useCanvasStore.getState().setMe(me);
-        useCanvasStore.getState().updateCollaborator(guestId, me);
+        useCanvasStore.getState().setMe(meObject);
+        useCanvasStore.getState().updateCollaborator(guestId, meObject);
     }, []);
+
+    // Sync 'me' name when userName changes in settings
+    const userName = useSettingsStore(s => s.userName);
+    const setMe = useCanvasStore(s => s.setMe);
+    const updateCollaborator = useCanvasStore(s => s.updateCollaborator);
+    const me = useCanvasStore(s => s.me);
+
+    useEffect(() => {
+        if (me && userName && me.name !== userName) {
+            const updatedMe = { ...me, name: userName };
+            setMe(updatedMe);
+            updateCollaborator(me.id, updatedMe);
+        }
+    }, [userName, me, setMe, updateCollaborator]);
 
     // Handle pane click - create root node or clear selection
     const onPaneClick = useCallback(() => {
@@ -265,6 +281,7 @@ function Canvas() {
                 maxZoom={2}
                 panOnScroll
                 zoomOnScroll={false}
+                zoomOnDoubleClick={false}
                 zoomOnPinch
                 attributionPosition="bottom-left"
                 proOptions={{ hideAttribution: true }}
@@ -363,17 +380,6 @@ function Canvas() {
                 {/* Sync Status Panel */}
                 <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
                     <div className="flex items-center gap-2">
-                        {/* Current User Profile */}
-                        <div
-                            className="flex items-center justify-center w-9 h-9 bg-card/80 backdrop-blur-sm border border-border rounded-full shadow-sm cursor-pointer hover:bg-accent transition-colors"
-                            title={useSettingsStore.getState().userName || 'You'}
-                            onClick={() => useSettingsStore.setState({ userName: '' })} // temporary way to reset name for testing, or just to change it? Maybe open settings.
-                        >
-                            <span className="text-sm font-bold text-primary">
-                                {(useSettingsStore(state => state.userName) || 'U').charAt(0).toUpperCase()}
-                            </span>
-                        </div>
-
                         <div className="flex items-center justify-center w-9 h-9 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
                             {syncStatus === 'saving' && <Cloud className="h-4 w-4 animate-bounce text-primary" />}
                             {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
@@ -385,9 +391,9 @@ function Canvas() {
                         </div>
                     </div>
 
-                    {/* Collaborators List */}
+                    {/* Collaborators List (Including Me) */}
                     {Object.keys(collaborators).length > 0 && (
-                        <div className="mt-2 flex items-center -space-x-2 overflow-hidden">
+                        <div className="mt-2 flex items-center gap-2">
                             {Object.values(collaborators).map((c) => (
                                 <div
                                     key={c.id}
@@ -398,7 +404,7 @@ function Canvas() {
                                     <span className="leading-none">{c.name.charAt(0).toUpperCase()}</span>
                                 </div>
                             ))}
-                            <div className="flex items-center ml-2 px-2 h-8 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                            <div className="flex items-center px-2 h-8 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm text-[10px] font-medium text-muted-foreground whitespace-nowrap">
                                 <Users className="h-3 w-3 mr-1" />
                                 {Object.keys(collaborators).length}
                             </div>
