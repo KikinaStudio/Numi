@@ -58,6 +58,7 @@ export function usePersistence() {
     const isSavingRef = useRef<boolean>(false);
     const dbChannelRef = useRef<any>(null);
     const presenceChannelRef = useRef<any>(null);
+    const activeSubIdRef = useRef<number>(0);
 
     // Serialize current state to detect changes
     const serializeState = useCallback((nodes: ConversationNode[], edges: Edge[], name: string) => {
@@ -312,36 +313,49 @@ export function usePersistence() {
         };
     }, [useCanvasStore.getState().nodes, useCanvasStore.getState().edges, useCanvasStore.getState().treeName, saveTree, setSyncStatus, syncStatus]);
 
-    // Initial load from URL and Realtime Subscriptions
+    // 1. INITIAL LOAD FROM URL - Run once on mount
     useEffect(() => {
-        const client = supabase;
-        if (!client) return;
-
         const params = new URLSearchParams(window.location.search);
         const urlTreeId = params.get('treeId');
-
         if (urlTreeId && urlTreeId !== treeId) {
             loadTree(urlTreeId);
         }
+    }, []); // Empty dependency array for stability
 
-        if (!treeId) return;
+    // 2. REALTIME SUBSCRIPTION - Stable Singleton Pattern
+    useEffect(() => {
+        if (!treeId || !supabase) return;
 
-        console.log('⚡️ [Realtime] Initializing channels for:', treeId);
+        const subId = ++activeSubIdRef.current;
+        console.log(`⚡️ [Realtime] Starting sub #${subId} for tree:`, treeId);
 
-        // Use a small delay to ensure previous channels are fully cleaned up in the backend
-        const timeoutId = setTimeout(() => {
+        // Random suffix to bypass any server-side binding caching
+        const suffix = Math.random().toString(36).slice(2, 7);
+        let dbChannel: any = null;
+        let presenceChannel: any = null;
+
+        const setupChannels = async () => {
+            // Wait slightly for previous channels to clear backend sockets
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // If another subscription started during our delay, abort
+            if (subId !== activeSubIdRef.current) {
+                console.log(`🔌 [Realtime] Aborting sub #${subId} (superseded)`);
+                return;
+            }
+
             const state = useCanvasStore.getState();
             state.setRealtimeStatus('CONNECTING');
 
-            // --- CHANNEL 1: DATABASE ---
-            const dbChannel = client.channel(`db-sync-${treeId}`);
+            // --- CHANNEL 1: DATABASE (Unique Name) ---
+            dbChannel = supabase.channel(`db-sync-${treeId}-${suffix}`);
             dbChannelRef.current = dbChannel;
 
             dbChannel
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'nodes' },
-                    (payload) => {
+                    (payload: any) => {
                         const data = (payload.new || payload.old) as any;
                         if (data?.tree_id !== treeId) return;
 
@@ -388,7 +402,7 @@ export function usePersistence() {
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'edges' },
-                    (payload) => {
+                    (payload: any) => {
                         const data = (payload.new || payload.old) as any;
                         if (data?.tree_id !== treeId) return;
 
@@ -421,10 +435,8 @@ export function usePersistence() {
                         schema: 'public',
                         table: 'trees',
                     },
-                    (payload) => {
+                    (payload: any) => {
                         if (payload.new?.id !== treeId) return;
-                        console.log('📡 [Realtime] Tree Update:', payload.new?.name);
-
                         if (isSavingRef.current) return;
                         const state = useCanvasStore.getState();
                         if (payload.new.name !== state.treeName) {
@@ -432,24 +444,27 @@ export function usePersistence() {
                         }
                     }
                 )
-                .subscribe((status, err) => {
-                    console.log(`🔗 [DB] ${status}`);
+                .subscribe((status: string, err?: any) => {
+                    if (subId !== activeSubIdRef.current) return;
+
+                    console.log(`🔗 [DB] sub #${subId}: ${status}`);
                     if (err) {
-                        console.error('❌ [DB] Error:', err);
+                        console.error(`❌ [DB] sub #${subId} Error:`, err);
                         useCanvasStore.getState().setRealtimeStatus('ERROR', err.message);
                     } else if (status === 'SUBSCRIBED') {
                         useCanvasStore.getState().setRealtimeStatus('SUBSCRIBED');
                     }
                 });
 
-            // --- CHANNEL 2: PRESENCE ---
-            const presenceChannel = client.channel(`presence-${treeId}`, {
+            // --- CHANNEL 2: PRESENCE (Unique Name) ---
+            presenceChannel = supabase.channel(`presence-${treeId}-${suffix}`, {
                 config: { presence: { key: useCanvasStore.getState().me?.id || 'anon' } }
             });
             presenceChannelRef.current = presenceChannel;
 
             presenceChannel
                 .on('presence', { event: 'sync' }, () => {
+                    if (subId !== activeSubIdRef.current) return;
                     const newState = presenceChannel.presenceState();
                     const flattened: Record<string, any> = {};
                     Object.values(newState).forEach((presences: any) => {
@@ -457,30 +472,35 @@ export function usePersistence() {
                     });
                     useCanvasStore.getState().setCollaborators(flattened);
                 })
-                .subscribe(async (status) => {
-                    console.log(`👥 [Presence] ${status}`);
+                .subscribe(async (status: string) => {
+                    if (subId !== activeSubIdRef.current) return;
+                    console.log(`👥 [Presence] sub #${subId}: ${status}`);
                     const me = useCanvasStore.getState().me;
                     if (status === 'SUBSCRIBED' && me) {
                         await presenceChannel.track(me);
                     }
                 });
-        }, 100);
+        };
+
+        setupChannels();
 
         return () => {
-            clearTimeout(timeoutId);
-            console.log('🔌 [Realtime] Closing channels...');
-            if (dbChannelRef.current) {
-                console.log('🔌 [Realtime] Resetting DB channel...');
-                client.removeChannel(dbChannelRef.current);
+            console.log(`🔌 [Realtime] Cleaning up sub #${subId}...`);
+            // Increment ID immediately to invalidate any async callbacks from this sub
+            if (activeSubIdRef.current === subId) {
+                activeSubIdRef.current++;
+            }
+
+            if (dbChannel) {
+                supabase.removeChannel(dbChannel);
                 dbChannelRef.current = null;
             }
-            if (presenceChannelRef.current) {
-                console.log('🔌 [Realtime] Resetting Presence channel...');
-                client.removeChannel(presenceChannelRef.current);
+            if (presenceChannel) {
+                supabase.removeChannel(presenceChannel);
                 presenceChannelRef.current = null;
             }
         };
-    }, [treeId, loadTree, setNodes, setEdges]); // EXTREMELY STABLE DEPENDENCIES
+    }, [treeId, setNodes, setEdges]); // Only react to treeId changes
 
     // Update URL when treeId changes
     useEffect(() => {
