@@ -26,6 +26,7 @@ import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
 import { SettingsDialog } from '@/components/ui/settings-dialog';
 import { UserOnboardingModal } from './UserOnboardingModal';
+import CollaboratorCursor from './CollaboratorCursor';
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
@@ -113,7 +114,8 @@ function Canvas() {
 
 
     // Persistence hook for auto-saving
-    usePersistence();
+    const { saveTree } = usePersistence();
+    const isLoading = useCanvasStore(s => s.isLoading);
 
     const [showTreeList, setShowTreeList] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -136,6 +138,7 @@ function Canvas() {
             id: guestId,
             name: initialName,
             color: randomColor,
+            mousePos: null,
             lastActive: Date.now()
         };
         useCanvasStore.getState().setMe(meObject);
@@ -156,6 +159,19 @@ function Canvas() {
         }
     }, [userName, me, setMe, updateCollaborator]);
 
+    // Handle cursor movement
+    const lastMousePosUpdate = useRef<number>(0);
+    const handlePointerMove = useCallback((e: React.PointerEvent) => {
+        if (!me) return;
+        const now = Date.now();
+        if (now - lastMousePosUpdate.current < 80) return; // Throttle at ~12fps for cursors
+
+        const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        const updatedMe = { ...me, mousePos: pos };
+        setMe(updatedMe);
+        updateCollaborator(me.id, updatedMe);
+        lastMousePosUpdate.current = now;
+    }, [me, setMe, updateCollaborator, screenToFlowPosition]);
     // Handle pane click - create root node or clear selection
     const onPaneClick = useCallback(() => {
         selectNode(null);
@@ -244,12 +260,16 @@ function Canvas() {
     }, [contextMenu, deleteNode, setContextMenu]);
 
     const handleShare = useCallback(() => {
-        if (!treeId) return;
+        if (!treeId) {
+            // Trigger a save to generate a tree ID immediately
+            saveTree();
+            return;
+        }
         const url = `${window.location.origin}${window.location.pathname}?treeId=${treeId}`;
         navigator.clipboard.writeText(url);
         setShowShareToast(true);
         setTimeout(() => setShowShareToast(false), 3000);
-    }, [treeId]);
+    }, [treeId, saveTree]);
 
     // Default edge options for consistent styling  
     const defaultEdgeOptions = useMemo(() => ({
@@ -269,6 +289,7 @@ function Canvas() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onPointerMove={handlePointerMove}
                 onPaneClick={onPaneClick}
                 onDoubleClick={onPaneDoubleClick}
                 onNodeContextMenu={onNodeContextMenu}
@@ -430,6 +451,19 @@ function Canvas() {
                         </Button>
                     </div>
                 </Panel>
+
+                {/* Live Collaborator Cursors Overlay */}
+                {Object.values(collaborators)
+                    .filter(c => c.id !== me?.id && c.mousePos)
+                    .map(c => (
+                        <CollaboratorCursor
+                            key={c.id}
+                            name={c.name}
+                            color={c.color}
+                            x={c.mousePos!.x}
+                            y={c.mousePos!.y}
+                        />
+                    ))}
             </ReactFlow >
 
             {/* Context Menu */}
@@ -457,6 +491,16 @@ function Canvas() {
                     <div className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-sm border border-primary-foreground/10 backdrop-blur-md">
                         <Check className="h-4 w-4" />
                         Lien copié dans le presse-papiers !
+                    </div>
+                </div>
+            )}
+
+            {/* Initial Loading Overlay */}
+            {isLoading && (
+                <div className="fixed inset-0 z-[2000] bg-background/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                        <p className="text-sm font-bold text-muted-foreground animate-pulse">Chargement de la conversation...</p>
                     </div>
                 </div>
             )}

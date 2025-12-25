@@ -17,6 +17,7 @@ interface DbNode {
         role: 'user' | 'assistant' | 'system';
         content: string;
         branchContext?: string;
+        authorName?: string;
         selectedPersonaId?: string;
         customPersona?: {
             name: string;
@@ -55,6 +56,8 @@ export function usePersistence() {
         syncStatus,
         updateNode,
         me,
+        isLoading,
+        setIsLoading,
     } = useCanvasStore();
 
     const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -85,8 +88,8 @@ export function usePersistence() {
             return;
         }
 
-        // Prevent parallel executions
-        if (isSavingRef.current) {
+        // Prevent parallel executions or saving during initial load
+        if (isSavingRef.current || isLoading) {
             return;
         }
 
@@ -139,6 +142,7 @@ export function usePersistence() {
                     role: node.data.role,
                     content: node.data.content,
                     branchContext: node.data.branchContext,
+                    authorName: node.data.authorName,
                     selectedPersonaId: node.data.selectedPersonaId,
                     customPersona: node.data.customPersona
                 },
@@ -213,7 +217,7 @@ export function usePersistence() {
 
     const loadTree = useCallback(async (id: string) => {
         if (!supabase) return;
-
+        setIsLoading(true);
         try {
             // 1. Fetch Tree Metadata
             const { data: tree, error: treeError } = await supabase
@@ -246,6 +250,7 @@ export function usePersistence() {
                     role: node.data.role,
                     content: node.data.content,
                     branchContext: node.data.branchContext,
+                    authorName: node.data.authorName,
                     selectedPersonaId: node.data.selectedPersonaId,
                     customPersona: node.data.customPersona,
                     modelConfig: node.model_config
@@ -274,11 +279,10 @@ export function usePersistence() {
             // 7. Update lastSavedRef to prevent immediate auto-save after loading
             lastSavedRef.current = serializeState(flowNodes, flowEdges, tree.name);
 
-        } catch (error: any) {
-            console.error('Failed to load tree:', error);
-            setSyncStatus('error', `Load failed: ${error.message || 'Unknown error'}`);
+        } finally {
+            setIsLoading(false);
         }
-    }, [loadGraph, setSyncStatus, serializeState]);
+    }, [loadGraph, setSyncStatus, serializeState, setIsLoading]);
 
     // Debounced Auto-save
     useEffect(() => {
@@ -355,6 +359,7 @@ export function usePersistence() {
                                 role: node.data.role,
                                 content: node.data.content,
                                 branchContext: node.data.branchContext,
+                                authorName: node.data.authorName,
                                 modelConfig: node.model_config,
                             },
                         };
@@ -368,6 +373,7 @@ export function usePersistence() {
                                 existing.position.x !== flowNode.position.x ||
                                 existing.position.y !== flowNode.position.y ||
                                 existing.data.role !== flowNode.data.role ||
+                                existing.data.authorName !== flowNode.data.authorName ||
                                 existing.data.selectedPersonaId !== flowNode.data.selectedPersonaId ||
                                 JSON.stringify(existing.data.customPersona) !== JSON.stringify(flowNode.data.customPersona);
 

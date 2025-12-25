@@ -185,7 +185,7 @@ function ConversationNodeComponent(props: NodeProps) {
                     )}
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
-                    {isUser ? (userName || 'You') : (
+                    {isUser ? (nodeData.authorName || 'Guest') : (
                         nodeData.selectedPersonaId === 'custom'
                             ? nodeData.customPersona?.name || 'Custom Agent'
                             : (nodeData.selectedPersonaId

@@ -29,6 +29,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
         systemPrompt: string;
         description: string;
     };
+    authorName?: string;
     hasChildren?: boolean;
 }
 
@@ -47,6 +48,7 @@ export interface Collaborator {
     name: string;
     color: string;
     position?: XYPosition;
+    mousePos?: XYPosition | null;
     lastActive: number;
 }
 
@@ -67,6 +69,7 @@ interface CanvasState {
     treeName: string;
     syncStatus: 'synced' | 'saving' | 'error' | 'unsaved';
     syncError: string | null;
+    isLoading: boolean;
 
     // Actions
     setNodes: (nodes: ConversationNode[]) => void;
@@ -94,6 +97,7 @@ interface CanvasState {
     setTreeId: (id: string | null) => void;
     setTreeName: (name: string) => void;
     setSyncStatus: (status: CanvasState['syncStatus'], error?: string | null) => void;
+    setIsLoading: (loading: boolean) => void;
     loadGraph: (nodes: ConversationNode[], edges: Edge[], treeId: string, treeName?: string) => void;
 
     // Branching
@@ -131,6 +135,7 @@ export const useCanvasStore = create<CanvasState>()(
             treeName: 'Untitled Conversation',
             syncStatus: 'synced',
             syncError: null,
+            isLoading: false,
             collaborators: {},
             me: null,
 
@@ -142,6 +147,7 @@ export const useCanvasStore = create<CanvasState>()(
             setTreeId: (id) => set({ treeId: id }),
             setTreeName: (name) => set({ treeName: name }),
             setSyncStatus: (status, error = null) => set({ syncStatus: status, syncError: error }),
+            setIsLoading: (loading) => set({ isLoading: loading }),
             loadGraph: (nodes, edges, treeId, treeName) => set({
                 nodes,
                 edges,
@@ -252,6 +258,7 @@ export const useCanvasStore = create<CanvasState>()(
                     data: {
                         role: 'user',
                         content,
+                        authorName: get().me?.name || 'User',
                     },
                 };
 
@@ -280,6 +287,7 @@ export const useCanvasStore = create<CanvasState>()(
                         isGenerating: role === 'assistant',
                         selectedPersonaId: parent?.data.selectedPersonaId,
                         customPersona: parent?.data.customPersona,
+                        authorName: role === 'user' ? (get().me?.name || 'User') : undefined,
                     },
                 };
 
