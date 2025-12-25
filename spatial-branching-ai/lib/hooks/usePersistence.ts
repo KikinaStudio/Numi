@@ -123,6 +123,17 @@ export function usePersistence() {
 
                 currentTreeId = tree.id;
                 setTreeId(currentTreeId);
+
+                // Log access for the owner immediately
+                if (me?.id) {
+                    await supabase
+                        .from('tree_access')
+                        .upsert({
+                            tree_id: currentTreeId,
+                            user_id: me.id,
+                            last_accessed_at: new Date().toISOString()
+                        });
+                }
             } else {
                 // Update name and touch updated_at
                 await supabase
@@ -283,6 +294,19 @@ export function usePersistence() {
 
             // 7. Update lastSavedRef to prevent immediate auto-save after loading
             lastSavedRef.current = serializeState(flowNodes, flowEdges, tree.name);
+
+            // 8. Log Access (for shared list)
+            const settings = (await import('@/lib/stores/settings-store')).useSettingsStore.getState();
+            const currentUserId = settings.userId;
+            if (currentUserId && supabase) {
+                await supabase
+                    .from('tree_access')
+                    .upsert({
+                        tree_id: tree.id,
+                        user_id: currentUserId,
+                        last_accessed_at: new Date().toISOString()
+                    });
+            }
 
         } catch (error) {
             console.error('Error loading tree:', error);

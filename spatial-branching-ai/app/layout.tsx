@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Spatial Branching AI | Infinite Canvas Conversations",
+  title: "Numi⎜Collaborative tree thinking",
   description: "Visualize and branch your AI conversations in an infinite canvas. Create non-linear conversation trees with deep branching from text selections.",
   keywords: ["AI", "conversations", "branching", "canvas", "LLM", "ChatGPT"],
   icons: {
