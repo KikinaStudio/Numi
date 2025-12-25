@@ -5,29 +5,27 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { User, ArrowRight } from 'lucide-react';
 
-export function UserOnboardingModal() {
-    const { userName, setUserName } = useSettingsStore();
-    const [open, setOpen] = useState(false);
-    const [name, setName] = useState('');
+interface UserOnboardingModalProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
 
-    useEffect(() => {
-        if (!userName) {
-            setOpen(true);
-        }
-    }, [userName]);
+export function UserOnboardingModal({ open, onOpenChange }: UserOnboardingModalProps) {
+    const { userName, setUserName } = useSettingsStore();
+    const [name, setName] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (name.trim()) {
             setUserName(name.trim());
-            setOpen(false);
+            onOpenChange(false);
         }
     };
 
     return (
         <Dialog open={open} onOpenChange={(val) => {
             // Prevent closing if no name set yet
-            if (userName) setOpen(val);
+            if (userName) onOpenChange(val);
         }}>
             <DialogContent className="sm:max-w-md border-none shadow-2xl bg-card/95 backdrop-blur-xl">
                 <DialogHeader className="space-y-4 text-center pb-2">

@@ -327,7 +327,7 @@ export function usePersistence() {
         const channel = client.channel(`tree:${treeId}`, {
             config: {
                 presence: {
-                    key: treeId,
+                    key: me?.id || 'anonymous',
                 },
             },
         });
@@ -457,21 +457,19 @@ export function usePersistence() {
 
                 useCanvasStore.getState().setCollaborators(flattened);
             })
-            .subscribe();
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED' && me) {
+                    await channel.track(me);
+                }
+            });
 
         return () => {
             client.removeChannel(channel);
             channelRef.current = null;
         };
-    }, [treeId, loadTree, setNodes, setEdges]);
+    }, [treeId, loadTree, setNodes, setEdges, me?.id]);
 
-    // Separate effect for Presence Tracking (Me)
-    useEffect(() => {
-        const channel = channelRef.current;
-        if (channel && me) {
-            channel.track(me);
-        }
-    }, [me, treeId]);
+    // Simplified presence tracking is now handled in the main channel subscription
 
     // Update URL when treeId changes
     useEffect(() => {

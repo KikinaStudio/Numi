@@ -41,7 +41,7 @@ function ConversationNodeComponent(props: NodeProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [isEditingPersona, setIsEditingPersona] = useState(false);
 
-    const { updateNode, setTextSelection, selectNode, setContextMenu, createChildNode } = useCanvasStore();
+    const { updateNode, setTextSelection, selectNode, setContextMenu, createChildNode, me } = useCanvasStore();
     const { generate } = useChat();
 
     const isUser = nodeData.role === 'user';
@@ -169,23 +169,29 @@ function ConversationNodeComponent(props: NodeProps) {
                 isUser && 'bg-blue-500/10 border-blue-500/20',
                 isAssistant && 'bg-emerald-500/10 border-emerald-500/20'
             )}>
-                <div className={cn(
-                    'p-1.5 rounded-lg',
-                    isUser && 'bg-blue-500/20',
-                    isAssistant && 'bg-emerald-500/20'
-                )}>
-                    {isUser ? (
-                        <div className="h-4 w-4 flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-blue-500 leading-none">
-                                {(userName || 'U').charAt(0).toUpperCase()}
-                            </span>
-                        </div>
+                <div
+                    className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0",
+                        isAssistant ? "bg-primary" : "bg-blue-500"
+                    )}
+                    style={!isAssistant && nodeData.authorName ? {
+                        backgroundColor: (nodeData.authorName === me?.name) ? (me?.color || '#3b82f6') : (
+                            '#3b82f6'
+                        )
+                    } : {}}
+                >
+                    {isAssistant ? (
+                        <Bot className="h-4 w-4" />
                     ) : (
-                        <Bot className="h-4 w-4 text-emerald-400" />
+                        <span className="leading-none">
+                            {(nodeData.authorName || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                        </span>
                     )}
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">
-                    {isUser ? (nodeData.authorName || 'Guest') : (
+                <span className="text-sm font-medium text-muted-foreground truncate">
+                    {isUser ? (
+                        nodeData.authorName === me?.name ? 'You' : (nodeData.authorName || 'Guest')
+                    ) : (
                         nodeData.selectedPersonaId === 'custom'
                             ? nodeData.customPersona?.name || 'Custom Agent'
                             : (nodeData.selectedPersonaId
@@ -193,9 +199,11 @@ function ConversationNodeComponent(props: NodeProps) {
                                 : 'Assistant')
                     )}
                 </span>
-                {nodeData.isGenerating && (
-                    <Sparkles className="h-4 w-4 text-yellow-500 animate-spin ml-auto" />
-                )}
+                {
+                    nodeData.isGenerating && (
+                        <Sparkles className="h-4 w-4 text-yellow-500 animate-spin ml-auto" />
+                    )
+                }
             </div>
 
             {

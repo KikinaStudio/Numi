@@ -120,29 +120,45 @@ function Canvas() {
     const [showTreeList, setShowTreeList] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showShareToast, setShowShareToast] = useState(false);
+    const [showOnboarding, setShowOnboarding] = useState(false);
 
     // AI Chat hook for generating responses
     const { generate } = useChat();
 
-    // Generate random identity for collaboration
+    // Generate or load persistent identity for collaboration
     useEffect(() => {
-        const guestId = Math.random().toString(36).substring(7);
-        const names = ['Artiste', 'Explorateur', 'Architecte', 'Penseur', 'Visionnaire', 'Guide'];
-        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-        const randomName = names[Math.floor(Math.random() * names.length)];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        const settings = useSettingsStore.getState();
+        const storedId = settings.userId;
+        const storedColor = settings.userColor;
+        const storedName = settings.userName;
 
-        const initialName = useSettingsStore.getState().userName || randomName;
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+        const names = ['Artiste', 'Explorateur', 'Architecte', 'Penseur', 'Visionnaire', 'Guide'];
+
+        const finalId = storedId || Math.random().toString(36).substring(7);
+        const finalColor = storedColor || colors[Math.floor(Math.random() * colors.length)];
+        const finalName = storedName || names[Math.floor(Math.random() * names.length)];
+
+        // Persist if new
+        if (!storedId || !storedColor) {
+            settings.setUserDetails({ id: finalId, color: finalColor });
+        }
 
         const meObject = {
-            id: guestId,
-            name: initialName,
-            color: randomColor,
+            id: finalId,
+            name: finalName,
+            color: finalColor,
             mousePos: null,
             lastActive: Date.now()
         };
+
         useCanvasStore.getState().setMe(meObject);
-        useCanvasStore.getState().updateCollaborator(guestId, meObject);
+        useCanvasStore.getState().updateCollaborator(finalId, meObject);
+
+        // Explicitly show onboarding if name was never set by user
+        if (!storedName) {
+            setShowOnboarding(true);
+        }
     }, []);
 
     // Sync 'me' name when userName changes in settings
@@ -348,8 +364,6 @@ function Canvas() {
                     </div>
                 )}
 
-                {/* User Onboarding */}
-                <UserOnboardingModal />
 
                 {/* Tree Name Panel */}
                 <Panel position="top-left" className="m-4">
@@ -405,16 +419,19 @@ function Canvas() {
                     {Object.keys(collaborators).length > 0 && (
                         <div className="flex items-center gap-2">
                             <div className="flex items-center -space-x-2">
-                                {Object.values(collaborators).map((c) => (
-                                    <div
-                                        key={c.id}
-                                        className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[11px] font-bold text-white shadow-md hover:z-20 transition-all cursor-default"
-                                        style={{ backgroundColor: c.color }}
-                                        title={c.name}
-                                    >
-                                        <span className="leading-none">{c.name.charAt(0).toUpperCase()}</span>
-                                    </div>
-                                ))}
+                                {Object.values(collaborators).map((c) => {
+                                    const initials = c.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                                    return (
+                                        <div
+                                            key={c.id}
+                                            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[11px] font-extrabold text-white shadow-md hover:z-20 transition-all cursor-default"
+                                            style={{ backgroundColor: c.color }}
+                                            title={c.name}
+                                        >
+                                            <span className="leading-none">{initials || '?'}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                             <div className="flex items-center px-3 h-9 bg-card/90 backdrop-blur-md border border-border rounded-full shadow-sm text-[11px] font-bold text-muted-foreground whitespace-nowrap">
                                 <Users className="h-3.5 w-3.5 mr-1.5" />
@@ -507,6 +524,7 @@ function Canvas() {
 
             <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
             <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+            <UserOnboardingModal open={showOnboarding} onOpenChange={setShowOnboarding} />
         </div >
     );
 }
