@@ -23,9 +23,11 @@ export interface SettingsState {
     apiKeys: ApiKeys;
     defaultModel: string;
     theme: 'light' | 'dark';
+    userName?: string;
     setApiKey: (provider: keyof ApiKeys, key: string) => void;
     setDefaultModel: (model: string) => void;
     setTheme: (theme: 'light' | 'dark') => void;
+    setUserName: (name: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -39,12 +41,14 @@ export const useSettingsStore = create<SettingsState>()(
             },
             defaultModel: 'xiaomi/mimo-v2-flash:free',
             theme: 'dark',
+            userName: undefined,
             setApiKey: (provider, key) =>
                 set((state) => ({
                     apiKeys: { ...state.apiKeys, [provider]: key },
                 })),
             setDefaultModel: (model) => set({ defaultModel: model }),
             setTheme: (theme) => set({ theme }),
+            setUserName: (userName) => set({ userName }),
         }),
         {
             name: 'spatial-ai-settings',

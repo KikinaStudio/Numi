@@ -184,12 +184,6 @@ function ConversationNodeComponent(props: NodeProps) {
                 {nodeData.isGenerating && (
                     <Sparkles className="h-4 w-4 text-yellow-500 animate-spin ml-auto" />
                 )}
-                {nodeData.branchContext && (
-                    <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-                        <GitBranch className="h-3 w-3" />
-                        <span>Branched</span>
-                    </div>
-                )}
             </div>
 
             {nodeData.branchContext && (
@@ -253,7 +247,7 @@ function ConversationNodeComponent(props: NodeProps) {
                                         const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                                         // Use 'gi' flags for global and case-insensitive matching
                                         const regex = new RegExp(`(${escaped})`, 'gi');
-                                        content = content.replace(regex, '<mark class="branched-highlight">$1</mark>');
+                                        content = content.replace(regex, '<span class="branched-highlight">$1</span>');
                                     });
                                     return content;
                                 })()}
@@ -333,25 +327,25 @@ function ConversationNodeComponent(props: NodeProps) {
                 type="target"
                 position={Position.Top}
                 id="t"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
             />
             <Handle
                 type="source"
                 position={Position.Bottom}
                 id="b"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
             />
             <Handle
                 type="target"
                 position={Position.Left}
                 id="l"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
             />
             <Handle
                 type="source"
                 position={Position.Right}
                 id="r"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform"
+                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
             />
         </div>
     );

@@ -17,6 +17,7 @@ import { useCanvasStore, useNodes, useEdges, ConversationNodeData, useTemporalSt
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
+import SimpleFloatingEdge from './SimpleFloatingEdge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick } from 'lucide-react';
@@ -24,10 +25,14 @@ import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { TreeListDialog } from './TreeListDialog';
 import { SettingsDialog } from '@/components/ui/settings-dialog';
+import { UserOnboardingModal } from './UserOnboardingModal';
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
     conversation: ConversationNode,
+};
+const edgeTypes = {
+    floating: SimpleFloatingEdge,
 };
 
 // Context menu state type
@@ -231,7 +236,7 @@ function Canvas() {
 
     // Default edge options for consistent styling  
     const defaultEdgeOptions = useMemo(() => ({
-        type: 'smoothstep' as const,
+        type: 'floating',
         animated: true,
         style: {
             stroke: theme === 'dark' ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.5)',
@@ -251,6 +256,7 @@ function Canvas() {
                 onDoubleClick={onPaneDoubleClick}
                 onNodeContextMenu={onNodeContextMenu}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                 snapToGrid
@@ -303,6 +309,9 @@ function Canvas() {
                     </div>
                 )}
 
+                {/* User Onboarding */}
+                <UserOnboardingModal />
+
                 {/* Tree Name Panel */}
                 <Panel position="top-left" className="m-4">
                     <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
@@ -326,6 +335,18 @@ function Canvas() {
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7"
+                                onClick={() => {
+                                    clearCanvas();
+                                    setTreeName('New Conversation');
+                                }}
+                                title="New Conversation"
+                            >
+                                <FilePlus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
                                 onClick={() => setShowTreeList(true)}
                                 title="Open saved conversations"
                             >
@@ -337,14 +358,27 @@ function Canvas() {
 
                 {/* Sync Status Panel */}
                 <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
-                    <div className="flex items-center justify-center w-9 h-9 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
-                        {syncStatus === 'saving' && <Cloud className="h-4 w-4 animate-bounce text-primary" />}
-                        {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
-                        {syncStatus === 'error' && (
-                            <div title={syncError || 'Sync Error'}>
-                                <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
-                            </div>
-                        )}
+                    <div className="flex items-center gap-2">
+                        {/* Current User Profile */}
+                        <div
+                            className="flex items-center justify-center w-9 h-9 bg-card/80 backdrop-blur-sm border border-border rounded-full shadow-sm cursor-pointer hover:bg-accent transition-colors"
+                            title={useSettingsStore.getState().userName || 'You'}
+                            onClick={() => useSettingsStore.setState({ userName: '' })} // temporary way to reset name for testing, or just to change it? Maybe open settings.
+                        >
+                            <span className="text-sm font-bold text-primary">
+                                {(useSettingsStore(state => state.userName) || 'U').charAt(0).toUpperCase()}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center justify-center w-9 h-9 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-sm">
+                            {syncStatus === 'saving' && <Cloud className="h-4 w-4 animate-bounce text-primary" />}
+                            {syncStatus === 'synced' && <Cloud className="h-4 w-4 text-emerald-500" />}
+                            {syncStatus === 'error' && (
+                                <div title={syncError || 'Sync Error'}>
+                                    <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Collaborators List */}

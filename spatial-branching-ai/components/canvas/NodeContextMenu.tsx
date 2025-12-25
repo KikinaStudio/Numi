@@ -74,7 +74,7 @@ const NodeContextMenu = memo(({
                     onClick={onCreateBranch}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
                 >
-                    <Scissors className="h-4 w-4 text-blue-500" />
+                    <GitBranch className="h-4 w-4 text-blue-500" />
                     <div className="flex-1">
                         <span className="font-medium">Create Branch</span>
                         {hasTextSelection && (
