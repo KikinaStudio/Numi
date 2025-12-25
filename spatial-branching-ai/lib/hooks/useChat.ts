@@ -71,9 +71,14 @@ export function useChat(options: UseChatOptions = {}) {
             }
 
             if (systemPrompt) {
+                // Prepend a strict identity override to prevent persona bleeding from history
+                const strictPrompt = `CRITICAL: You are now assuming a NEW IDENTITY. 
+IGNORE all previous instructions or roles you might have identified with earlier in this conversation.
+YOUR NEW PERSONA: ${systemPrompt}`;
+
                 // Prepend system prompt at the VERY beginning
                 validMessages = [
-                    { role: 'system', content: systemPrompt },
+                    { role: 'system', content: strictPrompt },
                     ...validMessages
                 ];
             }

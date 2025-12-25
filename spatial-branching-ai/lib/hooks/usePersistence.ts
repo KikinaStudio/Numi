@@ -17,6 +17,12 @@ interface DbNode {
         role: 'user' | 'assistant' | 'system';
         content: string;
         branchContext?: string;
+        selectedPersonaId?: string;
+        customPersona?: {
+            name: string;
+            systemPrompt: string;
+            description: string;
+        };
     };
     model_config: {
         model?: string;
@@ -132,7 +138,9 @@ export function usePersistence() {
                 data: {
                     role: node.data.role,
                     content: node.data.content,
-                    branchContext: node.data.branchContext
+                    branchContext: node.data.branchContext,
+                    selectedPersonaId: node.data.selectedPersonaId,
+                    customPersona: node.data.customPersona
                 },
                 model_config: node.data.modelConfig || {},
                 created_at: new Date().toISOString(),
@@ -238,6 +246,8 @@ export function usePersistence() {
                     role: node.data.role,
                     content: node.data.content,
                     branchContext: node.data.branchContext,
+                    selectedPersonaId: node.data.selectedPersonaId,
+                    customPersona: node.data.customPersona,
                     modelConfig: node.model_config
                 }
             }));
@@ -357,7 +367,9 @@ export function usePersistence() {
                                 existing.data.content !== flowNode.data.content ||
                                 existing.position.x !== flowNode.position.x ||
                                 existing.position.y !== flowNode.position.y ||
-                                existing.data.role !== flowNode.data.role;
+                                existing.data.role !== flowNode.data.role ||
+                                existing.data.selectedPersonaId !== flowNode.data.selectedPersonaId ||
+                                JSON.stringify(existing.data.customPersona) !== JSON.stringify(flowNode.data.customPersona);
 
                             if (hasChanged) {
                                 const updatedNodes = [...currentNodes];
