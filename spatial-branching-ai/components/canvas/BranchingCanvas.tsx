@@ -24,6 +24,7 @@ import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, S
 import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
+import { supabase } from '@/lib/supabase/client';
 import { TreeListDialog } from './TreeListDialog';
 import { SettingsDialog } from '@/components/ui/settings-dialog';
 import { UserOnboardingModal } from './UserOnboardingModal';
@@ -309,9 +310,74 @@ function Canvas() {
         },
     }), [theme]);
 
+    // Drag & Drop Handler
+    const onDragOver = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+    }, []);
+
+    const onDrop = useCallback(async (event: React.DragEvent) => {
+        event.preventDefault();
+
+        const file = event.dataTransfer.files[0];
+        if (!file) return;
+
+        // Basic validation
+        if (!file.type.startsWith('image/')) {
+            alert('Only images are supported for now.');
+            return;
+        }
+
+        if (!supabase) {
+            alert('Supabase client not initialized. Check your environment variables.');
+            return;
+        }
+
+        try {
+            // Upload to Supabase
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(7)}_${Date.now()}.${fileExt}`;
+            const filePath = `${treeId || 'temp'}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('files')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('files')
+                .getPublicUrl(filePath);
+
+            // Create Node
+            const position = screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+
+            const nodeId = useCanvasStore.getState().createRootNode(position, '');
+            useCanvasStore.getState().updateNode(nodeId, {
+                fileUrl: publicUrl,
+                fileName: file.name,
+                mimeType: file.type,
+                role: 'user' // Files are user inputs
+            });
+
+        } catch (error: any) {
+            console.error('Upload failed:', error);
+            alert(`Upload failed: ${error.message}`);
+        }
+    }, [screenToFlowPosition, treeId]);
+
     return (
         <TooltipProvider>
-            <div ref={reactFlowWrapper} className="w-full h-full">
+            <div
+                ref={reactFlowWrapper}
+                className="w-full h-full"
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+            >
                 <ReactFlow
                     nodes={nodesWithMetadata}
                     edges={edges}

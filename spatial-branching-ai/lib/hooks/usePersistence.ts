@@ -24,6 +24,9 @@ interface DbNode {
             systemPrompt: string;
             description: string;
         };
+        fileUrl?: string;
+        fileName?: string;
+        mimeType?: string;
     };
     model_config: {
         model?: string;
@@ -150,14 +153,17 @@ export function usePersistence() {
                 parent_id: null,
                 position_x: node.position.x,
                 position_y: node.position.y,
-                content_type: 'text',
+                content_type: (node.data.fileUrl && node.data.mimeType?.startsWith('image/')) ? 'image' : 'text',
                 data: {
                     role: node.data.role,
                     content: node.data.content,
                     branchContext: node.data.branchContext,
                     authorName: node.data.authorName,
                     selectedPersonaId: node.data.selectedPersonaId,
-                    customPersona: node.data.customPersona
+                    customPersona: node.data.customPersona,
+                    fileUrl: node.data.fileUrl,
+                    fileName: node.data.fileName,
+                    mimeType: node.data.mimeType
                 },
                 model_config: node.data.modelConfig || {},
                 created_at: new Date().toISOString(),
@@ -276,6 +282,9 @@ export function usePersistence() {
                     authorName: node.data.authorName,
                     selectedPersonaId: node.data.selectedPersonaId,
                     customPersona: node.data.customPersona,
+                    fileUrl: node.data.fileUrl,
+                    fileName: node.data.fileName,
+                    mimeType: node.data.mimeType,
                     modelConfig: node.model_config
                 }
             }));
@@ -400,6 +409,9 @@ export function usePersistence() {
                                     authorName: node.data.authorName,
                                     selectedPersonaId: node.data.selectedPersonaId,
                                     customPersona: node.data.customPersona,
+                                    fileUrl: node.data.fileUrl,
+                                    fileName: node.data.fileName,
+                                    mimeType: node.data.mimeType,
                                     modelConfig: node.model_config,
                                 },
                             };

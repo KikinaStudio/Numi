@@ -46,11 +46,32 @@ export function useChat(options: UseChatOptions = {}) {
 
         // Filter out empty messages and ensure proper format
         let validMessages = messages
-            .filter(m => m.content.trim().length > 0)
-            .map(m => ({
-                role: m.role as 'user' | 'assistant' | 'system',
-                content: m.content,
-            }));
+            .filter(m => (m.content && m.content.trim().length > 0) || (m as any).fileUrl)
+            .map(m => {
+                // Check if it's an image node
+                const hasImage = (m as any).fileUrl;
+                if (hasImage) {
+                    return {
+                        role: m.role as 'user' | 'assistant' | 'system',
+                        content: [
+                            { type: "text", text: m.content || "Analyze this image." },
+                            { type: "image_url", image_url: { url: (m as any).fileUrl } }
+                        ]
+                    };
+                }
+                return {
+                    role: m.role as 'user' | 'assistant' | 'system',
+                    content: m.content,
+                };
+            });
+
+        // Force Vision Model if any images are present
+        const hasImages = messages.some(m => (m as any).fileUrl);
+        if (hasImages && activeModel !== 'nvidia/nemotron-nano-12b-v2-vl:free') {
+            // Override model for this request
+            // We can't easily change the hook option, but we can change the body
+            // Note: We need to ensure the route handler respects this or we pass it explicitly
+        }
 
         // INJECT PERSONA SYSTEM PROMPT
         // We look for the persona settings on the node being generated (which should have inherited them)
@@ -99,7 +120,7 @@ YOUR NEW PERSONA: ${systemPrompt}`;
                 },
                 body: JSON.stringify({
                     messages: validMessages,
-                    model: activeModel,
+                    model: hasImages ? 'nvidia/nemotron-nano-12b-v2-vl:free' : activeModel,
                     apiKey,
                     provider,
                     temperature,

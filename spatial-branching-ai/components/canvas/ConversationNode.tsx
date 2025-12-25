@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -141,6 +141,57 @@ function ConversationNodeComponent(props: NodeProps) {
         }
     }, [id, createChildNode, selectNode]);
 
+    // --- MINIMALIST IMAGE VIEW ---
+    if (nodeData.fileUrl) {
+        return (
+            <div
+                onClick={handleClick}
+                onDoubleClick={(e) => e.stopPropagation()}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                className={cn(
+                    'relative group transition-all duration-300 ease-in-out',
+                    'shadow-lg hover:shadow-2xl',
+                    selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+                    (isHovered || selected) && 'scale-[1.01]'
+                )}
+            >
+                <img
+                    src={nodeData.fileUrl}
+                    alt={nodeData.fileName}
+                    className="rounded-xl border border-border/50 max-w-[300px] max-h-[400px] object-cover bg-black/5 dark:bg-white/5"
+                />
+
+                {/* Minimalist Handles (Only show on hover/select) */}
+                <Handle
+                    type="target"
+                    position={Position.Top}
+                    id="t"
+                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
+                />
+                <Handle
+                    type="source"
+                    position={Position.Bottom}
+                    id="b"
+                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
+                />
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id="l"
+                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
+                />
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id="r"
+                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
+                />
+            </div>
+        );
+    }
+
+    // --- STANDARD CONVERSATION BUBBLE ---
     return (
         <div
             onClick={handleClick}
@@ -229,18 +280,19 @@ function ConversationNodeComponent(props: NodeProps) {
                         placeholder="Type your message..."
                     />
                 ) : (
+
                     <div
                         ref={contentRef}
                         onMouseUp={handleMouseUp}
                         onClick={(e) => {
                             e.stopPropagation();
                             selectNode(id);
-                            if (isUser) setIsEditing(true);
+                            if (isUser && !nodeData.fileUrl) setIsEditing(true);
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
                             'prose-notion select-text cursor-text pb-12 min-h-[100px] transition-all duration-300',
-                            !nodeData.content && 'text-muted-foreground italic',
+                            !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground italic',
                             !selected && !isHovered && nodeData.hasChildren && isAssistant && "max-h-[120px] overflow-hidden"
                         )}
                         style={!selected && !isHovered && nodeData.hasChildren && isAssistant ? {
@@ -248,35 +300,37 @@ function ConversationNodeComponent(props: NodeProps) {
                             maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
                         } : {}}
                     >
-                        {nodeData.content ? (
-                            <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                rehypePlugins={[rehypeRaw]}
-                                components={{
-                                    p: ({ node, ...props }) => <p {...props} className="mb-4 last:mb-0" />,
-                                }}
-                            >
-                                {(() => {
-                                    let content = nodeData.content;
-                                    const branchedTexts = ((nodeData as any).branchedTexts as string[]) || [];
+                        {
+                            nodeData.content ? (
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeRaw]}
+                                    components={{
+                                        p: ({ node, ...props }) => <p {...props} className="mb-4 last:mb-0" />,
+                                    }}
+                                >
+                                    {(() => {
+                                        let content = nodeData.content;
+                                        const branchedTexts = ((nodeData as any).branchedTexts as string[]) || [];
 
-                                    // Sort by length descending to avoid partial matches
-                                    const sortedBranches = [...new Set(branchedTexts)].sort((a, b) => b.length - a.length);
+                                        // Sort by length descending to avoid partial matches
+                                        const sortedBranches = [...new Set(branchedTexts)].sort((a, b) => b.length - a.length);
 
-                                    sortedBranches.forEach(branch => {
-                                        if (!branch || typeof branch !== 'string' || !branch.trim()) return;
-                                        // Escaping regex special characters
-                                        const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                        // Use 'gi' flags for global and case-insensitive matching
-                                        const regex = new RegExp(`(${escaped})`, 'gi');
-                                        content = content.replace(regex, '<span class="branched-highlight">$1</span>');
-                                    });
-                                    return content;
-                                })()}
-                            </ReactMarkdown>
-                        ) : (
-                            isUser ? 'Click to type...' : 'Generating...'
-                        )}
+                                        sortedBranches.forEach(branch => {
+                                            if (!branch || typeof branch !== 'string' || !branch.trim()) return;
+                                            // Escaping regex special characters
+                                            const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                            // Use 'gi' flags for global and case-insensitive matching
+                                            const regex = new RegExp(`(${escaped})`, 'gi');
+                                            content = content.replace(regex, '<span class="branched-highlight">$1</span>');
+                                        });
+                                        return content;
+                                    })()}
+                                </ReactMarkdown>
+                            ) : (
+                                isUser ? 'Click to type...' : 'Generating...'
+                            )
+                        }
                         {!selected && !isHovered && nodeData.hasChildren && isAssistant && (
                             <div className="absolute bottom-1 left-0 right-0 flex justify-center pb-1 pointer-events-none">
                                 <div className="h-1.5 w-8 rounded-full bg-muted-foreground/30 animate-pulse" />
