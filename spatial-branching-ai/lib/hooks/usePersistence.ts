@@ -4,6 +4,13 @@ import { supabase } from '@/lib/supabase/client';
 import { ConversationNode } from '@/lib/stores/canvas-store';
 import { Edge } from '@xyflow/react';
 
+// UUID validation helper
+const isUUID = (id: string | null | undefined): id is string => {
+    if (!id) return false;
+    const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return regex.test(id);
+};
+
 const DEBOUNCE_DELAY = 1000; // 1 second auto-save
 
 interface DbNode {
@@ -142,14 +149,14 @@ export function usePersistence() {
                 setTreeId(currentTreeId);
 
                 // Add creator to tree_members
-                if (me?.id) {
+                if (currentTreeId && isUUID(me?.id)) {
                     await supabase.from('tree_members').insert({
                         tree_id: currentTreeId,
-                        user_id: me.id,
+                        user_id: me!.id,
                         last_accessed_at: new Date().toISOString()
                     });
                 }
-            } else {
+            } else if (currentTreeId && isUUID(currentTreeId)) {
                 // Update name and touch updated_at
                 await supabase
                     .from('trees')
@@ -158,6 +165,11 @@ export function usePersistence() {
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', currentTreeId);
+            } else if (currentTreeId && !isUUID(currentTreeId)) {
+                console.warn('[Persistence] Skipping tree update: ID is not a valid UUID.', currentTreeId);
+                isSavingRef.current = false;
+                setSyncStatus('synced');
+                return;
             }
 
             // 2. Upsert Nodes
@@ -193,7 +205,7 @@ export function usePersistence() {
             }
 
             // Clean up deleted nodes
-            const activeNodeIds = currentNodes.map(n => n.id);
+            const activeNodeIds = currentNodes.map(n => n.id).filter(id => isUUID(id));
             if (activeNodeIds.length > 0) {
                 try {
                     await supabase

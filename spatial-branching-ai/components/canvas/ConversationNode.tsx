@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -47,7 +47,12 @@ function ConversationNodeComponent(props: NodeProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [isEditingPersona, setIsEditingPersona] = useState(false);
 
-    const { updateNode, setTextSelection, selectNode, setContextMenu, createChildNode, me } = useCanvasStore();
+    const updateNode = useCanvasStore((state) => state.updateNode);
+    const setTextSelection = useCanvasStore((state) => state.setTextSelection);
+    const selectNode = useCanvasStore((state) => state.selectNode);
+    const setContextMenu = useCanvasStore((state) => state.setContextMenu);
+    const createChildNode = useCanvasStore((state) => state.createChildNode);
+    const me = useCanvasStore((state) => state.me);
     const { generate } = useChat();
 
     const isUser = nodeData.role === 'user';
@@ -263,7 +268,7 @@ function ConversationNodeComponent(props: NodeProps) {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={cn(
-                'group bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out relative',
+                'group bg-background/40 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md transition-all duration-300 ease-in-out relative',
                 'hover:shadow-2xl',
                 'w-[450px]',
                 !selected && !isHovered && nodeData.hasChildren && isAssistant && 'w-[250px]',
@@ -272,19 +277,18 @@ function ConversationNodeComponent(props: NodeProps) {
                 nodeData.isGenerating && 'animate-pulse'
             )}
             style={isUser && effectiveColor ? {
-                borderColor: `${effectiveColor}40`, // 25% opacity
+                borderColor: `${effectiveColor}33`, // 20% opacity
                 background: `linear-gradient(to bottom right, ${effectiveColor}15, ${effectiveColor}05)`, // 8%, 2%
                 boxShadow: isHovered || selected ? `0 10px 30px -10px ${effectiveColor}33` : undefined // Colored shadow on hover
             } : {}}
         >
 
             <div className={cn(
-                'flex items-center gap-2 px-4 py-1.5 border-b rounded-t-xl transition-colors',
-                isAssistant && 'bg-muted/10 border-border', // Neutral for Assistant
+                'flex items-center gap-3 px-6 py-3.5 rounded-t-xl transition-all duration-300',
+                isAssistant && 'bg-gradient-to-b from-muted-foreground/10 via-muted/5 to-transparent', // Grayish hint at top
             )}
                 style={isUser && effectiveColor ? {
-                    backgroundColor: `${effectiveColor}15`, // 8% opacity
-                    borderColor: `${effectiveColor}26`, // 15% opacity
+                    background: `linear-gradient(to bottom, ${effectiveColor}1a, ${effectiveColor}05)`, // 10% to 2% gradient
                 } : {}}
             >
                 <div
@@ -296,9 +300,22 @@ function ConversationNodeComponent(props: NodeProps) {
                         backgroundColor: effectiveColor
                     } : {}}
                 >
-                    {isAssistant ? (
-                        <Bot className="h-4 w-4" />
-                    ) : (
+                    {isAssistant ? (() => {
+                        const persona = PERSONAS.find(p => p.id === (nodeData.selectedPersonaId || 'standard'));
+                        const IconComponent = (() => {
+                            switch (persona?.icon) {
+                                case 'Search': return Search;
+                                case 'CheckSquare': return CheckSquare;
+                                case 'Zap': return Zap;
+                                case 'TrendingUp': return TrendingUp;
+                                case 'Heart': return Heart;
+                                case 'Sparkles': return Sparkles;
+                                case 'Settings': return Settings;
+                                default: return Bot;
+                            }
+                        })();
+                        return <IconComponent className="h-4 w-4" />;
+                    })() : (
                         <span className="leading-none">
                             {(nodeData.authorName || 'Guest').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                         </span>
@@ -324,7 +341,7 @@ function ConversationNodeComponent(props: NodeProps) {
 
             {
                 nodeData.branchContext && (
-                    <div className="px-4 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-3 group transition-colors hover:bg-blue-500/10">
+                    <div className="px-6 py-4 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-4 group transition-colors hover:bg-blue-500/10">
                         <GitBranch className="h-4 w-4 text-blue-500 shrink-0" />
                         <p className="text-[15px] text-foreground leading-relaxed font-medium">
                             {nodeData.branchContext}
@@ -333,7 +350,7 @@ function ConversationNodeComponent(props: NodeProps) {
                 )
             }
 
-            <div className="p-4 relative nodrag cursor-auto">
+            <div className="p-0 relative nodrag cursor-auto">
                 {isEditing || (selected && !isAssistant) ? (
                     <textarea
                         ref={textareaRef}
@@ -341,7 +358,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         defaultValue={nodeData.content}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        className="w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] pb-12"
+                        className="w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] px-6 pt-2 pb-14"
                         placeholder={!nodeData.parentId ? "Welcome to Numi ! Type your idea or ask for help ..." : "Type your message here..."}
                     />
                 ) : (
@@ -356,7 +373,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text pb-12 min-h-[100px]',
+                            'prose-notion select-text cursor-text px-6 pt-2 pb-14 min-h-[100px] nopan nodrag nowheel',
                             !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground italic',
                             !selected && !isHovered && nodeData.hasChildren && isAssistant && "max-h-[120px] overflow-hidden"
                         )}

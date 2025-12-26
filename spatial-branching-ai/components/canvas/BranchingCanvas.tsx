@@ -60,27 +60,25 @@ function Canvas() {
 
     const nodes = useNodes();
     const edges = useEdges();
-    const {
-        onNodesChange,
-        onEdgesChange,
-        onConnect,
-        createRootNode,
-        createChildNode,
-        selectNode,
-        deleteNode,
-        clearCanvas,
-        treeName,
-        setTreeName,
-        textSelection,
-        setTextSelection,
-        contextMenu,
-        setContextMenu,
-        syncStatus,
-        syncError,
-        collaborators,
-        treeId,
-        ownerId,
-    } = useCanvasStore();
+    const onNodesChange = useCanvasStore((state) => state.onNodesChange);
+    const onEdgesChange = useCanvasStore((state) => state.onEdgesChange);
+    const onConnect = useCanvasStore((state) => state.onConnect);
+    const createRootNode = useCanvasStore((state) => state.createRootNode);
+    const createChildNode = useCanvasStore((state) => state.createChildNode);
+    const selectNode = useCanvasStore((state) => state.selectNode);
+    const deleteNode = useCanvasStore((state) => state.deleteNode);
+    const clearCanvas = useCanvasStore((state) => state.clearCanvas);
+    const treeName = useCanvasStore((state) => state.treeName);
+    const setTreeName = useCanvasStore((state) => state.setTreeName);
+    const textSelection = useCanvasStore((state) => state.textSelection);
+    const setTextSelection = useCanvasStore((state) => state.setTextSelection);
+    const contextMenu = useCanvasStore((state) => state.contextMenu);
+    const setContextMenu = useCanvasStore((state) => state.setContextMenu);
+    const syncStatus = useCanvasStore((state) => state.syncStatus);
+    const syncError = useCanvasStore((state) => state.syncError);
+    const collaborators = useCanvasStore((state) => state.collaborators);
+    const treeId = useCanvasStore((state) => state.treeId);
+    const ownerId = useCanvasStore((state) => state.ownerId);
 
     // Compute hasChildren and branchedTexts for nodes to enable compact view and highlighting
     const nodesWithMetadata = useMemo(() => {
@@ -647,52 +645,52 @@ function Canvas() {
                     </Panel>
 
 
-    {/* Diagnostics Panel for Realtime Debugging */ }
-    <DiagnosticsPanel />
+                    {/* Diagnostics Panel for Realtime Debugging */}
+                    <DiagnosticsPanel />
                 </ReactFlow >
 
-        {/* Context Menu */ }
-    {
-        contextMenu && (
-            <NodeContextMenu
-                x={contextMenu.x}
-                y={contextMenu.y}
-                nodeId={contextMenu.nodeId}
-                nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
-                hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
-                selectedText={textSelection?.text}
-                onCreateBranch={handleCreateBranch}
-                onRegenerate={handleRegenerate}
-                onCopy={handleCopy}
-                onDelete={handleDelete}
-                onClose={handleCloseContextMenu}
-            />
-        )
-    }
+                {/* Context Menu */}
+                {
+                    contextMenu && (
+                        <NodeContextMenu
+                            x={contextMenu.x}
+                            y={contextMenu.y}
+                            nodeId={contextMenu.nodeId}
+                            nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
+                            hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
+                            selectedText={textSelection?.text}
+                            onCreateBranch={handleCreateBranch}
+                            onRegenerate={handleRegenerate}
+                            onCopy={handleCopy}
+                            onDelete={handleDelete}
+                            onClose={handleCloseContextMenu}
+                        />
+                    )
+                }
 
-    {/* Share Confirmation Toast */ }
-    {
-        showShareToast && (
-            <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
-                <div className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-sm border border-primary-foreground/10 backdrop-blur-md">
-                    <Check className="h-4 w-4" />
-                    Lien copié dans le presse-papiers !
-                </div>
-            </div>
-        )
-    }
+                {/* Share Confirmation Toast */}
+                {
+                    showShareToast && (
+                        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-sm border border-primary-foreground/10 backdrop-blur-md">
+                                <Check className="h-4 w-4" />
+                                Lien copié dans le presse-papiers !
+                            </div>
+                        </div>
+                    )
+                }
 
-    {/* Initial Loading Overlay */ }
-    {
-        isLoading && (
-            <div className="fixed inset-0 z-[2000] bg-background/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-sm font-bold text-muted-foreground animate-pulse">Chargement de l'arbre...</p>
-                </div>
-            </div>
-        )
-    }
+                {/* Initial Loading Overlay */}
+                {
+                    isLoading && (
+                        <div className="fixed inset-0 z-[2000] bg-background/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+                            <div className="flex flex-col items-center gap-4">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                <p className="text-sm font-bold text-muted-foreground animate-pulse">Chargement de l'arbre...</p>
+                            </div>
+                        </div>
+                    )
+                }
 
                 <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
                 <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
