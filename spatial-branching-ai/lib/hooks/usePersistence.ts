@@ -573,19 +573,42 @@ export function usePersistence() {
         }
     }, [me?.name, me?.color, me?.id]); // Track metadata changes
 
-    // 4. MOUSE POSITION TRACKING - throttled to avoid flooding
+    // 4. MOUSE POSITION TRACKING - Interval-based Throttle (10Hz)
+    // We use a ref to hold the latest state, and an interval to send updates.
+    // This prevents the "debounce" effect of the previous implementation where
+    // updates were only sent after the user STOPPED moving.
+    const latestMeRef = useRef(me);
+    const lastTrackedMeRef = useRef<any>(null);
+
+    // Keep latestMeRef up to date
+    useEffect(() => {
+        latestMeRef.current = me;
+    }, [me]);
+
     useEffect(() => {
         const channel = presenceChannelRef.current;
-        if (!channel || !me || !me.mousePos || !supabase) return;
+        if (!supabase) return;
 
-        const timeoutId = setTimeout(() => {
-            if (channel.state === 'joined') {
-                channel.track(me);
+        // processing loop
+        const intervalId = setInterval(() => {
+            if (channel && channel.state === 'joined' && latestMeRef.current) {
+                const latest = latestMeRef.current;
+                const last = lastTrackedMeRef.current;
+
+                // Check if mouse position changed
+                const hasMoved = !last ||
+                    (latest.mousePos?.x !== last.mousePos?.x) ||
+                    (latest.mousePos?.y !== last.mousePos?.y);
+
+                if (hasMoved) {
+                    channel.track(latest);
+                    lastTrackedMeRef.current = latest;
+                }
             }
-        }, 100); // Throttled updates for mouse
+        }, 100); // 100ms = 10 updates/sec
 
-        return () => clearTimeout(timeoutId);
-    }, [me?.mousePos?.x, me?.mousePos?.y]);
+        return () => clearInterval(intervalId);
+    }, []); // Run once on mount (refs handle state access)
 
     // Update URL when treeId changes
     useEffect(() => {

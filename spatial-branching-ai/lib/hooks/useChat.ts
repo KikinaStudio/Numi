@@ -144,10 +144,15 @@ export function useChat(options: UseChatOptions = {}) {
 
         // Loop again to check if we now have images (ancestor OR child)
         const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
-        if (hasImages && activeModel !== 'nvidia/nemotron-nano-12b-v2-vl:free') {
-            // Override model for this request
-            // We can't easily change the hook option, but we can change the body
-            // Note: We need to ensure the route handler respects this or we pass it explicitly
+        // Determine the best model for this request
+        let targetModel = activeModel;
+        if (hasImages) {
+            const modelDef = MODELS.find(m => m.id === activeModel);
+            // If model is unknown (not in list) or explicitly not vision capable, switch to fallback
+            if (!modelDef || !modelDef.vision) {
+                console.log(`[Vision] Model ${activeModel} does not support vision. Switching to fallback.`);
+                targetModel = 'nvidia/nemotron-nano-12b-v2-vl:free';
+            }
         }
 
         // INJECT GLOBAL IDENTITY & PERSONA
@@ -200,7 +205,7 @@ STYLE: Keep it short and to the point.`;
                 },
                 body: JSON.stringify({
                     messages: validMessages,
-                    model: hasImages ? 'nvidia/nemotron-nano-12b-v2-vl:free' : activeModel,
+                    model: targetModel,
                     apiKey,
                     provider,
                     temperature,

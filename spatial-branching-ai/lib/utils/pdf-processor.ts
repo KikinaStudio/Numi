@@ -27,10 +27,6 @@ export const convertPdfToImages = async (file: File): Promise<PDFPageImage[]> =>
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
-        if (!context) continue;
-
-        // ... existing viewport setup ... (lines 24-27)
-
         await page.render({
             canvasContext: context,
             viewport: viewport,
