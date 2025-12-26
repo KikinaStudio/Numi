@@ -470,7 +470,7 @@ function Canvas() {
                     <Panel position="top-left" className="m-4">
                         <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
                             <div className="flex items-center gap-2 pr-3 border-r border-border">
-                                <img src="/numi-tree-logo.png" alt="Numi" className="h-6 w-auto" />
+                                <img src="/numi-logo-v2.png" alt="Numi" className="h-6 w-auto" />
                             </div>
                             <div className="relative group">
                                 <Input
