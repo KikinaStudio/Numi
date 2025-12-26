@@ -3,8 +3,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase/client';
 import { usePersistence } from '@/lib/hooks/usePersistence';
-import { FileText, Calendar, Loader2 } from 'lucide-react';
+import { FileText, Calendar, Loader2, Trash2 } from 'lucide-react';
 import { useSettingsStore } from '@/lib/stores/settings-store';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface TreeListDialogProps {
     open: boolean;
@@ -21,6 +32,9 @@ export function TreeListDialog({ open, onOpenChange }: TreeListDialogProps) {
     const [trees, setTrees] = useState<TreeSummary[]>([]);
     const [loading, setLoading] = useState(false);
     const { loadTree } = usePersistence();
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (open) {
@@ -76,6 +90,48 @@ export function TreeListDialog({ open, onOpenChange }: TreeListDialogProps) {
         onOpenChange(false);
     };
 
+    const toggleSelection = (id: string) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedIds(newSet);
+    };
+
+    const handleSelectAll = () => {
+        if (selectedIds.size === trees.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(trees.map(t => t.id)));
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!supabase || selectedIds.size === 0) return;
+        setIsDeleting(true);
+
+        try {
+            const { error } = await supabase
+                .from('trees')
+                .delete()
+                .in('id', Array.from(selectedIds));
+
+            if (error) throw error;
+
+            // Clear selection and refresh
+            setSelectedIds(new Set());
+            fetchTrees();
+            setShowDeleteAlert(false);
+        } catch (error) {
+            console.error('Delete failed:', error);
+            alert('Failed to delete trees');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     // Simple date formatter since I'm not sure if date-fns is avail
     const formatDate = (dateString: string) => {
         try {
@@ -89,7 +145,20 @@ export function TreeListDialog({ open, onOpenChange }: TreeListDialogProps) {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Saved Trees</DialogTitle>
+                    <div className="flex items-center justify-between">
+                        <DialogTitle>Saved Trees</DialogTitle>
+                        {selectedIds.size > 0 && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setShowDeleteAlert(true)}
+                                className="h-7 text-xs"
+                            >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Delete ({selectedIds.size})
+                            </Button>
+                        )}
+                    </div>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-2 mt-4">
@@ -102,26 +171,60 @@ export function TreeListDialog({ open, onOpenChange }: TreeListDialogProps) {
                             No saved trees found.
                         </div>
                     ) : (
-                        trees.map((tree) => (
-                            <button
-                                key={tree.id}
-                                onClick={() => handleLoad(tree.id)}
-                                className="flex items-start gap-4 p-4 rounded-lg border bg-card hover:bg-accent hover:text-accent-foreground transition-colors text-left"
-                            >
-                                <div className="p-2 bg-primary/10 rounded-md">
-                                    <FileText className="h-4 w-4 text-primary" />
+                        <>
+                            <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+                                <Checkbox
+                                    checked={selectedIds.size === trees.length && trees.length > 0}
+                                    onCheckedChange={handleSelectAll}
+                                />
+                                <span>Select All</span>
+                            </div>
+                            {trees.map((tree) => (
+                                <div
+                                    key={tree.id}
+                                    className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors group"
+                                >
+                                    <Checkbox
+                                        checked={selectedIds.has(tree.id)}
+                                        onCheckedChange={() => toggleSelection(tree.id)}
+                                    />
+                                    <button
+                                        onClick={() => handleLoad(tree.id)}
+                                        className="flex items-start gap-4 flex-1 text-left"
+                                    >
+                                        <div className="p-2 bg-primary/10 rounded-md group-hover:bg-primary/20 transition-colors">
+                                            <FileText className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="flex-1 overflow-hidden">
+                                            <h4 className="font-medium text-sm truncate">{tree.name}</h4>
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                                <Calendar className="h-3 w-3" />
+                                                <span>{formatDate(tree.updated_at)}</span>
+                                            </div>
+                                        </div>
+                                    </button>
                                 </div>
-                                <div className="flex-1 overflow-hidden">
-                                    <h4 className="font-medium text-sm truncate">{tree.name}</h4>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{formatDate(tree.updated_at)}</span>
-                                    </div>
-                                </div>
-                            </button>
-                        ))
+                            ))}
+                        </>
                     )}
                 </div>
+
+                <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete {selectedIds.size} tree{selectedIds.size > 1 ? 's' : ''} and all associated data.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </DialogContent>
         </Dialog>
     );
