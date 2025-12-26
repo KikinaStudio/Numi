@@ -11,9 +11,9 @@ export const PERSONAS: Persona[] = [
     {
         id: 'standard',
         name: 'Standard AI',
-        description: 'Default helpful assistant behavior.',
-        shortLabel: 'Assistant',
-        systemPrompt: 'You are a helpful AI assistant. Respond directly to the user.'
+        description: 'Direct and concise answers.',
+        shortLabel: 'Answer',
+        systemPrompt: 'You are a helpful AI assistant. Provide short, straight to the point answers. No fluff.'
     },
     {
         id: 'socratic',

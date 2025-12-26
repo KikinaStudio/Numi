@@ -3,10 +3,10 @@
 import { memo, useCallback, useRef, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
+import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Pencil } from 'lucide-react';
+
 
 
 function ConversationNodeComponent(props: NodeProps) {
@@ -52,6 +52,25 @@ function ConversationNodeComponent(props: NodeProps) {
 
     const isUser = nodeData.role === 'user';
     const isAssistant = nodeData.role === 'assistant';
+
+    // Helper to get consistent color for legacy nodes or guest users
+    const getFallbackColor = (name: string) => {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash % USER_COLORS.length);
+        return USER_COLORS[index];
+    };
+
+    // Determine effective color for User bubbles
+    // 1. Explicit authorColor (saved in node)
+    // 2. If it's ME, use my current color from store
+    // 3. Fallback to hash of authorName (for consistent coloring of others/legacy)
+    const effectiveColor = isUser ? (
+        nodeData.authorColor ||
+        (nodeData.authorName === me?.name ? me?.color : getFallbackColor(nodeData.authorName || 'Guest'))
+    ) : undefined;
 
     // Handle text selection for deep branching via context menu
     const handleMouseUp = useCallback((e: React.MouseEvent) => {
@@ -250,49 +269,50 @@ function ConversationNodeComponent(props: NodeProps) {
                 !selected && !isHovered && nodeData.hasChildren && isAssistant && 'w-[250px]',
                 selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
                 (isHovered || selected) && 'shadow-2xl ring-1 ring-primary/20',
-                isUser && (theme === 'dark'
-                    ? 'bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30'
-                    : 'bg-gradient-to-br from-blue-500/5 to-purple-500/5 border-blue-500/20 shadow-blue-500/5'),
-                isAssistant && (theme === 'dark'
-                    ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/30'
-                    : 'bg-gradient-to-br from-emerald-500/5 to-teal-500/5 border-emerald-500/20 shadow-emerald-500/5'),
                 nodeData.isGenerating && 'animate-pulse'
             )}
+            style={isUser && effectiveColor ? {
+                borderColor: `${effectiveColor}40`, // 25% opacity
+                background: `linear-gradient(to bottom right, ${effectiveColor}15, ${effectiveColor}05)`, // 8%, 2%
+                boxShadow: isHovered || selected ? `0 10px 30px -10px ${effectiveColor}33` : undefined // Colored shadow on hover
+            } : {}}
         >
 
             <div className={cn(
-                'flex items-center gap-2 px-4 py-1.5 border-b rounded-t-xl',
-                isUser && 'bg-blue-500/10 border-blue-500/20',
-                isAssistant && 'bg-emerald-500/10 border-emerald-500/20'
-            )}>
+                'flex items-center gap-2 px-4 py-1.5 border-b rounded-t-xl transition-colors',
+                isAssistant && 'bg-muted/10 border-border', // Neutral for Assistant
+            )}
+                style={isUser && effectiveColor ? {
+                    backgroundColor: `${effectiveColor}15`, // 8% opacity
+                    borderColor: `${effectiveColor}26`, // 15% opacity
+                } : {}}
+            >
                 <div
                     className={cn(
                         "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0",
-                        isAssistant ? "bg-primary" : "bg-blue-500"
+                        isAssistant && "bg-primary" // Default primary for assistant
                     )}
-                    style={!isAssistant && nodeData.authorName ? {
-                        backgroundColor: (nodeData.authorName === me?.name) ? (me?.color || '#3b82f6') : (
-                            '#3b82f6'
-                        )
+                    style={isUser && effectiveColor ? {
+                        backgroundColor: effectiveColor
                     } : {}}
                 >
                     {isAssistant ? (
                         <Bot className="h-4 w-4" />
                     ) : (
                         <span className="leading-none">
-                            {(nodeData.authorName || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                            {(nodeData.authorName || 'Guest').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                         </span>
                     )}
                 </div>
                 <span className="text-sm font-medium text-muted-foreground truncate">
                     {isUser ? (
-                        nodeData.authorName === me?.name ? 'You' : (nodeData.authorName || 'Guest')
+                        nodeData.authorName || 'Guest'
                     ) : (
                         nodeData.selectedPersonaId === 'custom'
                             ? nodeData.customPersona?.name || 'Custom Agent'
                             : (nodeData.selectedPersonaId
-                                ? PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Assistant'
-                                : 'Assistant')
+                                ? (PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel === 'Standard AI' ? 'Answer' : PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Answer')
+                                : 'Answer')
                     )}
                 </span>
                 {
@@ -322,7 +342,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
                         className="w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] pb-12"
-                        placeholder="Type your message..."
+                        placeholder={!nodeData.parentId ? "Welcome to Numi ! Type your idea or ask for help ..." : "Type your message here..."}
                     />
                 ) : (
 
@@ -336,7 +356,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text pb-12 min-h-[100px] transition-all duration-300',
+                            'prose-notion select-text cursor-text pb-12 min-h-[100px]',
                             !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground italic',
                             !selected && !isHovered && nodeData.hasChildren && isAssistant && "max-h-[120px] overflow-hidden"
                         )}
@@ -373,7 +393,7 @@ function ConversationNodeComponent(props: NodeProps) {
                                     })()}
                                 </ReactMarkdown>
                             ) : (
-                                isUser ? 'Click to type...' : 'Generating...'
+                                isUser ? (!nodeData.parentId ? "Welcome to Numi ! Type your idea or ask for help ..." : "Click to type...") : 'Generating...'
                             )
                         }
                         {!selected && !isHovered && nodeData.hasChildren && isAssistant && (
@@ -409,7 +429,14 @@ function ConversationNodeComponent(props: NodeProps) {
                             <SelectContent className="bg-popover">
                                 {PERSONAS.map(persona => (
                                     <SelectItem key={persona.id} value={persona.id} className="text-[10px]">
-                                        {persona.shortLabel}
+                                        {persona.id === 'custom' ? (
+                                            <div className="flex items-center justify-between w-full gap-2">
+                                                <span>{persona.shortLabel}</span>
+                                                <Plus className="h-3 w-3 opacity-70" />
+                                            </div>
+                                        ) : (
+                                            persona.shortLabel
+                                        )}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

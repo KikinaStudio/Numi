@@ -99,7 +99,7 @@ export function usePersistence() {
         try {
             const currentNodes = state.nodes;
             const currentEdges = state.edges;
-            const currentName = state.treeName;
+            let currentName = state.treeName;
             let currentTreeId = state.treeId;
 
             const currentState = serializeState(currentNodes, currentEdges, currentName);
@@ -112,10 +112,24 @@ export function usePersistence() {
 
             // 1. Ensure Tree Exists
             if (!currentTreeId) {
+                // Generate default name if empty
+                if (!currentName.trim() && me?.id) {
+                    const { count } = await supabase
+                        .from('trees')
+                        .select('*', { count: 'exact', head: true })
+                        .ilike('name', 'Untitled Tree%')
+                        .eq('owner_id', me.id);
+
+                    const nextNum = (count || 0) + 1;
+                    const newName = `Untitled Tree ${nextNum}`;
+                    currentName = newName;
+                    useCanvasStore.getState().setTreeName(newName); // Update local state
+                }
+
                 const { data: tree, error: treeError } = await supabase
                     .from('trees')
                     .insert({
-                        name: currentName || 'Untitled Conversation',
+                        name: currentName || 'Untitled Tree', // Fallback if count fails
                         owner_id: me?.id
                     })
                     .select()
@@ -140,7 +154,7 @@ export function usePersistence() {
                 await supabase
                     .from('trees')
                     .update({
-                        name: currentName,
+                        name: currentName || 'Untitled Tree', // Prevent empty name saving if edited to empty
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', currentTreeId);

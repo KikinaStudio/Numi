@@ -13,7 +13,7 @@ import {
     NodeTypes,
     PanOnScrollMode,
 } from '@xyflow/react';
-import { useCanvasStore, useNodes, useEdges, ConversationNodeData, useTemporalStore } from '@/lib/stores/canvas-store';
+import { useCanvasStore, useNodes, useEdges, ConversationNodeData, useTemporalStore, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
@@ -143,7 +143,7 @@ function Canvas() {
         const storedColor = settings.userColor;
         const storedName = settings.userName;
 
-        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+        const colors = USER_COLORS;
         const names = ['Artiste', 'Explorateur', 'Architecte', 'Penseur', 'Visionnaire', 'Guide'];
 
         const finalId = storedId || Math.random().toString(36).substring(7);
@@ -169,6 +169,20 @@ function Canvas() {
         // Explicitly show onboarding if name was never set by user
         if (!storedName) {
             setShowOnboarding(true);
+        } else {
+            // If known user and empty canvas (should be true on first load if no treeId), create root node
+            // Need to check if we are loading a tree? If treeId is present in URL, we wait for load.
+            // But here we are in the initial mount effect.
+            // Let's defer this check slightly or check URL params.
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasTreeId = urlParams.get('treeId');
+
+            if (!hasTreeId && useCanvasStore.getState().nodes.length === 0) {
+                // Clean start
+                setTimeout(() => {
+                    useCanvasStore.getState().createRootNode({ x: 100, y: 300 });
+                }, 100);
+            }
         }
     }, []);
 
@@ -507,22 +521,7 @@ function Canvas() {
                         zoomable
                     />
 
-                    {/* Empty State Prompt */}
-                    {nodes.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                            <div className="flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-500">
-                                <div className="bg-primary/10 p-4 rounded-full mb-4 ring-1 ring-primary/20 shadow-lg backdrop-blur-sm">
-                                    <MousePointerClick className="h-8 w-8 text-primary animate-pulse" />
-                                </div>
-                                <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60 mb-2">
-                                    Start Thinking
-                                </h3>
-                                <p className="text-muted-foreground text-sm max-w-[200px]">
-                                    Double-click anywhere on the canvas to begin a new conversation tree.
-                                </p>
-                            </div>
-                        </div>
-                    )}
+
 
                     {/* Live Cursors Overlay */}
                     {/* We render check for collaborators directly using the store values */}
@@ -547,7 +546,7 @@ function Canvas() {
                             </div>
                             <div className="relative group">
                                 <Input
-                                    value={treeName}
+                                    value={treeName.startsWith('Untitled Tree') ? '' : treeName}
                                     onChange={(e) => setTreeName(e.target.value)}
                                     onFocus={(e) => e.target.select()}
                                     onKeyDown={(e) => {
@@ -556,7 +555,7 @@ function Canvas() {
                                         }
                                     }}
                                     className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium cursor-text"
-                                    placeholder="Conversation Title"
+                                    placeholder="Name your Tree"
                                 />
                             </div>
                             <div className="flex items-center gap-2 pl-2 border-l border-border">
@@ -566,7 +565,7 @@ function Canvas() {
                                     className="h-7 w-7"
                                     onClick={() => {
                                         clearCanvas();
-                                        setTreeName('New Conversation');
+                                        setTreeName('');
                                         // Clear URL to prevent re-loading the previous tree
                                         const url = new URL(window.location.href);
                                         url.searchParams.delete('treeId');
@@ -695,7 +694,13 @@ function Canvas() {
 
                 <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
                 <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-                <UserOnboardingModal open={showOnboarding} onOpenChange={setShowOnboarding} />
+                <UserOnboardingModal
+                    open={showOnboarding}
+                    onOpenChange={setShowOnboarding}
+                    onComplete={() => {
+                        useCanvasStore.getState().createRootNode({ x: 100, y: 300 });
+                    }}
+                />
             </div>
         </TooltipProvider>
     );

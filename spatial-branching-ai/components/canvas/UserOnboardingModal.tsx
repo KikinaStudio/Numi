@@ -8,9 +8,10 @@ import { User, ArrowRight } from 'lucide-react';
 interface UserOnboardingModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onComplete?: () => void;
 }
 
-export function UserOnboardingModal({ open, onOpenChange }: UserOnboardingModalProps) {
+export function UserOnboardingModal({ open, onOpenChange, onComplete }: UserOnboardingModalProps) {
     const { userName, setUserName } = useSettingsStore();
     const [name, setName] = useState('');
 
@@ -19,6 +20,7 @@ export function UserOnboardingModal({ open, onOpenChange }: UserOnboardingModalP
         if (name.trim()) {
             setUserName(name.trim());
             onOpenChange(false);
+            if (onComplete) onComplete();
         }
     };
 

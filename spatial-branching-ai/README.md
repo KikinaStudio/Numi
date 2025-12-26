@@ -15,35 +15,64 @@ Key objectives include:
 
 ## ✨ Key Features
 
-- **Presence & Collaboration (v5)**: Real-time collaborator avatars with tooltips, user count indicators, and reactive metadata syncing.
-- **Access Control**: Owner-only renaming for conversation trees; collaborators see a locked title with a 🔒 indicator.
-- **Selection-Based Branching**: Highlight any text to immediately branch a new conversation path from that specific context.
-- **Notion-Style Rendering**: AI responses are beautifully formatted with headers, lists, and spacing designed for readability.
-- **Infinite Canvas**: Drag, zoom, and pan across a limitless workspace using [React Flow](https://reactflow.dev/).
-- **Diagnostics Panel**: Visual feedback on your connection status (bottom-left) so you always know if you're "LIVE".
-- **BYOK (Bring Your Own Key)**: Securely use your own API keys for OpenRouter.
+### 🌌 Spatial AI Workspace
+
+- **Infinite Canvas**: A boundless environment to map out complex thoughts using [React Flow](https://reactflow.dev/).
+- **Branching Conversations**: Select any text in a bubble to branch off a new discussion path, maintaining context.
+- **Auto-Naming**: Trees are automatically named based on conversation content using a specialized AI agent.
+- **Organized Trees**: Folders and search to manage your "Saved Trees" effectively.
+
+### 🧠 Intelligent Agents
+
+- **Persona System**: Switch between different expert agents instantly:
+  - **Answer**: Concise, direct responses (Default).
+  - **Socratic**: Asks clarifying questions to refine your thinking.
+  - **Strategy**, **Creative**, **Critic**, and more.
+- **Custom Agents**: Define your own agent personas with custom system prompts.
+
+### 👁️ Multi-Modal Support
+
+- **Vision Capabilities**: Drag & drop images directly onto the canvas. The AI "sees" and analyzes them in context.
+- **PDF Analysis**: Drop PDF documents to have them converted to images and analyzed page-by-page.
+- **Context Awareness**: Child nodes inherit context from their parents (text and images).
+
+### 🤝 Real-Time Collaboration
+
+- **Live Presence**: See who is online with diverse, color-coded avatars.
+- **Live Cursors**: Track collaborators' movements in real-time.
+- **Shared Workspace**: Changes sync instantly across all connected users via Supabase Realtime.
+- **Access Control**: Secure ownership logic ensures only the creator can rename trees, while everyone can contribute.
 
 ## 🛠️ Tech Stack
 
 - **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
-- **Canvas**: @xyflow/react
-- **Database**: Supabase (PostgreSQL)
-- **AI**: OpenRouter
-- **State**: Zustand
-- **UI**: Tailwind CSS, Radix UI, Lucide Icons
+- **Canvas Engine**: @xyflow/react
+- **Database & Realtime**: Supabase (PostgreSQL)
+- **AI Inference**: OpenRouter (Support for GPT-4o, Claude 3.5, Gemini Pro, Llama 3)
+- **State Management**: Zustand + Immer
+- **Styling**: Tailwind CSS + Radix UI
 
-## 🔐 Database Requirements (Supabase)
+## 🔐 Environment Variables
 
-To enable stable Realtime sync, you **must** run these commands in your Supabase SQL Editor:
+Ensure these are set in your `.env.local` for full functionality:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+# API Keys (Client-side usage if BYOK)
+NEXT_PUBLIC_OPENROUTER_API_KEY=optional_default_key
+```
+
+## 🔐 Database Setup (Supabase)
+
+To enable stable Realtime sync and Multi-modal features, run the migrations in `/supabase/migrations`.
+Crucially, ensure Replica Identity is set:
 
 ```sql
--- 1. Enable Full Replica Identity for all core tables
 ALTER TABLE nodes REPLICA IDENTITY FULL;
 ALTER TABLE edges REPLICA IDENTITY FULL;
 ALTER TABLE trees REPLICA IDENTITY FULL;
-
--- 2. Ensure tables are in the realtime publication
-ALTER PUBLICATION supabase_realtime ADD TABLE nodes, edges, trees;
+ALTER PUBLICATION supabase_realtime ADD TABLE nodes, edges, trees, tree_members;
 ```
 
 ## 🎮 How to Use

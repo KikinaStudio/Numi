@@ -35,8 +35,16 @@ export interface ConversationNodeData extends Record<string, unknown> {
         description: string;
     };
     authorName?: string;
+    authorColor?: string;
     hasChildren?: boolean;
 }
+
+export const USER_COLORS = [
+    '#A855F7', // Purple-500
+    '#3B82F6', // Blue-500
+    '#EAB308', // Yellow-500
+    '#22C55E', // Green-500
+];
 
 // Extended node type for our conversation nodes
 export type ConversationNode = Node<ConversationNodeData, 'conversation'>;
@@ -146,7 +154,7 @@ export const useCanvasStore = create<CanvasState>()(
             activeConnection: null,
             treeId: null,
             ownerId: null,
-            treeName: 'Untitled Conversation',
+            treeName: '',
             syncStatus: 'synced',
             syncError: null,
             realtimeStatus: 'DISCONNECTED',
@@ -173,7 +181,7 @@ export const useCanvasStore = create<CanvasState>()(
                 edges,
                 treeId,
                 ownerId: ownerId || null,
-                treeName: treeName || 'Untitled Conversation',
+                treeName: treeName || '',
                 syncStatus: 'synced',
                 syncError: null
             }),
@@ -243,7 +251,7 @@ export const useCanvasStore = create<CanvasState>()(
                     edges: [],
                     treeId: null,
                     ownerId: null,
-                    treeName: 'Untitled Conversation',
+                    treeName: '',
                     selectedNodeId: null,
                     textSelection: null,
                     syncStatus: 'synced',
@@ -275,6 +283,8 @@ export const useCanvasStore = create<CanvasState>()(
             // Branching operations
             createRootNode: (position, content = '') => {
                 const id = generateId();
+                const randomColor = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
+
                 const newNode: ConversationNode = {
                     id,
                     type: 'conversation',
@@ -283,6 +293,7 @@ export const useCanvasStore = create<CanvasState>()(
                         role: 'user',
                         content,
                         authorName: get().me?.name || 'User',
+                        authorColor: get().me?.color || randomColor,
                     },
                 };
 
@@ -329,6 +340,10 @@ export const useCanvasStore = create<CanvasState>()(
                 // Fallback if something fails
                 if (!finalPosition) finalPosition = { x: 0, y: 0 };
 
+                const randomColor = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
+                // If it is a user node, use the current user's color. If assistant, no color (or inherited? User asked for "uncolored" assistant)
+                // Assistant = uncolored. User = user's color.
+
                 const newNode: ConversationNode = {
                     id,
                     type: 'conversation',
@@ -337,6 +352,7 @@ export const useCanvasStore = create<CanvasState>()(
                         role,
                         content: '', // Start empty
                         authorName: get().me?.name || (role === 'user' ? 'User' : 'Assistant'),
+                        authorColor: role === 'user' ? (get().me?.color || randomColor) : undefined,
                         branchContext,
                         parentId, // Track parent for easier logic
                         isGenerating: role === 'assistant', // Assistant nodes start generating

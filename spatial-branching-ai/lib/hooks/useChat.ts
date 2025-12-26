@@ -150,37 +150,36 @@ export function useChat(options: UseChatOptions = {}) {
             // Note: We need to ensure the route handler respects this or we pass it explicitly
         }
 
-        // INJECT PERSONA SYSTEM PROMPT
-        // We look for the persona settings on the node being generated (which should have inherited them)
+        // INJECT GLOBAL IDENTITY & PERSONA
+        // We look for the persona settings on the node being generated
         const nodeToCheck = useCanvasStore.getState().nodes.find(n => n.id === nodeId);
-        const personaId = nodeToCheck?.data.selectedPersonaId;
+        const personaId = nodeToCheck?.data.selectedPersonaId || 'standard';
         const customPersona = nodeToCheck?.data.customPersona;
 
-        if (personaId) {
-            let systemPrompt = '';
+        let specificPersonPrompt = '';
 
-            if (personaId === 'custom' && customPersona) {
-                systemPrompt = customPersona.systemPrompt;
-            } else {
-                const persona = PERSONAS.find(p => p.id === personaId);
-                if (persona && persona.id !== 'standard') {
-                    systemPrompt = persona.systemPrompt;
-                }
-            }
-
-            if (systemPrompt) {
-                // Prepend a strict identity override to prevent persona bleeding from history
-                const strictPrompt = `CRITICAL: You are now assuming a NEW IDENTITY. 
-IGNORE all previous instructions or roles you might have identified with earlier in this conversation.
-YOUR NEW PERSONA: ${systemPrompt}`;
-
-                // Prepend system prompt at the VERY beginning
-                validMessages = [
-                    { role: 'system', content: strictPrompt } as any,
-                    ...validMessages
-                ];
+        if (personaId === 'custom' && customPersona) {
+            specificPersonPrompt = customPersona.systemPrompt;
+        } else {
+            const persona = PERSONAS.find(p => p.id === personaId);
+            if (persona) {
+                specificPersonPrompt = persona.systemPrompt;
             }
         }
+
+        // Global Numi Identity + Tutorial Context
+        const globalSystemPrompt = `IDENTITY OVERRIDE: You are strictly "Numi". Never mention Mimo or other models.
+INTRODUCTION: If you introduce yourself, say you are Numi, a spatial AI workspace. briefly explain that you help users visualize ideas, branch conversations by selecting text, and analyze dropped files (Images/PDFs).
+STYLE: Keep it short and to the point.`;
+
+        // Combine prompts
+        const finalSystemPrompt = `${globalSystemPrompt}\n\nCURRENT ROLE/MODE:\n${specificPersonPrompt}`;
+
+        // Prepend system prompt at the VERY beginning
+        validMessages = [
+            { role: 'system', content: finalSystemPrompt } as any,
+            ...validMessages
+        ];
 
         if (validMessages.length === 0) {
             throw new Error('No valid messages in conversation context');
