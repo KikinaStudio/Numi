@@ -65,7 +65,9 @@ interface CanvasState {
     selectedNodeId: string | null;
     textSelection: TextSelection | null;
     contextMenu: { x: number; y: number; nodeId: string } | null;
+    // UI State
     isConnecting: boolean;
+    isLoading: boolean;
     collaborators: Record<string, Collaborator>;
     me: Collaborator | null;
 
@@ -77,7 +79,6 @@ interface CanvasState {
     syncError: string | null;
     realtimeStatus: 'CONNECTING' | 'SUBSCRIBED' | 'DISCONNECTED' | 'ERROR';
     lastRealtimeEvent: string | null;
-    isLoading: boolean;
 
     // Actions
     setNodes: (nodes: ConversationNode[]) => void;
