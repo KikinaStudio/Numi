@@ -397,6 +397,8 @@ function Canvas() {
                     minZoom={0.1}
                     maxZoom={2}
                     panOnScroll
+                    panOnDrag
+                    selectionOnDrag={false}
                     zoomOnScroll={false}
                     zoomOnDoubleClick={false}
                     zoomOnPinch

@@ -44,19 +44,54 @@ export function useChat(options: UseChatOptions = {}) {
         // Get conversation context from ancestors
         const messages = getConversationContext(nodeId);
 
+        // Check for attached images (immediate children of history nodes that are images)
+        const state = useCanvasStore.getState();
+        const edges = state.edges;
+        const nodes = state.nodes;
+
+        // Get conversation context from ancestors
+        const context = getConversationContext(nodeId) as any[];
+
         // Filter out empty messages and ensure proper format
-        let validMessages = messages
-            .filter(m => (m.content && m.content.trim().length > 0) || (m as any).fileUrl)
-            .map(m => {
-                // Check if it's an image node
-                const hasImage = (m as any).fileUrl;
-                if (hasImage) {
+        let validMessages = context
+            .filter(m => (m.content && m.content.trim().length > 0) || m.fileUrl)
+            .map((m) => {
+                // Find image children for this specific history node ID
+                const mChildEdges = edges.filter(e => e.source === m.id);
+                const mChildImages = mChildEdges
+                    .map(e => nodes.find(n => n.id === e.target))
+                    .filter(n => n && n.data.fileUrl);
+
+                // Check if it's an image node itself (ancestor)
+                const isImageNode = !!m.fileUrl;
+
+                if (isImageNode || mChildImages.length > 0) {
+                    const content: any[] = [];
+
+                    if (m.content) {
+                        content.push({ type: "text", text: m.content });
+                    }
+
+                    // Add ancestor image if present
+                    if (isImageNode) {
+                        content.push({ type: "image_url", image_url: { url: m.fileUrl || "" } });
+                    }
+
+                    // Add attached child images
+                    mChildImages.forEach(child => {
+                        if (child && child.data.fileUrl) {
+                            content.push({ type: "image_url", image_url: { url: child.data.fileUrl } });
+                        }
+                    });
+
+                    // Avoid empty content if it's just an attachment with no text and no self-url
+                    if (content.length === 0) {
+                        content.push({ type: "text", text: "Image Attachment" });
+                    }
+
                     return {
                         role: m.role as 'user' | 'assistant' | 'system',
-                        content: [
-                            { type: "text", text: m.content || "Analyze this image." },
-                            { type: "image_url", image_url: { url: (m as any).fileUrl } }
-                        ]
+                        content: content
                     };
                 }
                 return {
@@ -65,8 +100,8 @@ export function useChat(options: UseChatOptions = {}) {
                 };
             });
 
-        // Force Vision Model if any images are present
-        const hasImages = messages.some(m => (m as any).fileUrl);
+        // Loop again to check if we now have images (ancestor OR child)
+        const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
         if (hasImages && activeModel !== 'nvidia/nemotron-nano-12b-v2-vl:free') {
             // Override model for this request
             // We can't easily change the hook option, but we can change the body
@@ -113,6 +148,10 @@ YOUR NEW PERSONA: ${systemPrompt}`;
         updateNode(nodeId, { isGenerating: true });
 
         try {
+            console.log('[Vision Debug] Has Images:', hasImages);
+            console.log('[Vision Debug] Model:', hasImages ? 'nvidia/nemotron-nano-12b-v2-vl:free' : activeModel);
+            console.log('[Vision Debug] Last Message Content:', JSON.stringify(validMessages[validMessages.length - 1]?.content, null, 2));
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {

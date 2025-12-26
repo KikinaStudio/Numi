@@ -203,8 +203,17 @@ export function usePersistence() {
             if (deleteEdgesError) throw deleteEdgesError;
 
             // Deduplicate edges based on source/target to prevent unique constraint violations
+            // AND ensure both source and target nodes exist in the current set to avoid FK violations
+            const activeNodeIdSet = new Set(activeNodeIds);
             const uniqueEdgesMap = new Map<string, any>();
+
             currentEdges.forEach(edge => {
+                // strict check: source and target must be in the active nodes list
+                if (!activeNodeIdSet.has(edge.source) || !activeNodeIdSet.has(edge.target)) {
+                    console.warn(`[Persistence] Skipping edge ${edge.id} because source/target node missing.`);
+                    return;
+                }
+
                 const key = `${edge.source}-${edge.target}`;
                 if (!uniqueEdgesMap.has(key)) {
                     uniqueEdgesMap.set(key, {

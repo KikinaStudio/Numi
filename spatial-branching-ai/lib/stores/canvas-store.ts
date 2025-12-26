@@ -328,18 +328,23 @@ export const useCanvasStore = create<CanvasState>()(
             getAncestorNodes: (nodeId) => {
                 const { nodes, edges } = get();
                 const ancestors: ConversationNode[] = [];
-                let currentId = nodeId;
+                const visited = new Set<string>();
+                const queue = [nodeId];
 
-                // Find edge where current node is target
-                while (true) {
-                    const parentEdge = edges.find((e) => e.target === currentId);
-                    if (!parentEdge) break;
+                while (queue.length > 0) {
+                    const currentId = queue.shift()!;
+                    const parentEdges = edges.filter((e) => e.target === currentId);
 
-                    const parentNode = nodes.find((n) => n.id === parentEdge.source);
-                    if (!parentNode) break;
-
-                    ancestors.unshift(parentNode);
-                    currentId = parentNode.id;
+                    for (const edge of parentEdges) {
+                        if (!visited.has(edge.source)) {
+                            const parentNode = nodes.find((n) => n.id === edge.source);
+                            if (parentNode) {
+                                ancestors.unshift(parentNode); // Maintain a rough order
+                                visited.add(edge.source);
+                                queue.push(edge.source);
+                            }
+                        }
+                    }
                 }
 
                 return ancestors;
@@ -354,10 +359,14 @@ export const useCanvasStore = create<CanvasState>()(
                 const allNodes = currentNode ? [...ancestors, currentNode] : ancestors;
 
                 return allNodes.map((node) => ({
+                    id: node.id,
                     role: node.data.role,
                     content: node.data.branchContext
                         ? `[Context: "${node.data.branchContext}"]\n${node.data.content}`
                         : node.data.content,
+                    fileUrl: node.data.fileUrl,
+                    fileName: node.data.fileName,
+                    mimeType: node.data.mimeType
                 }));
             },
         })),
