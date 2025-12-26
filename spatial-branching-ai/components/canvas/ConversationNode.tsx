@@ -156,7 +156,7 @@ function ConversationNodeComponent(props: NodeProps) {
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
                 className={cn(
-                    'relative group transition-all duration-300 ease-in-out',
+                    'relative group transition-all duration-300 ease-in-out rounded-2xl',
                     'shadow-lg hover:shadow-2xl',
                     // Minimal selection indicator (no heavy ring)
                     selected ? 'scale-[1.02] shadow-2xl ring-1 ring-primary/30' : 'hover:scale-[1.01]'
@@ -165,7 +165,7 @@ function ConversationNodeComponent(props: NodeProps) {
                 <img
                     src={nodeData.fileUrl}
                     alt={nodeData.fileName}
-                    className="rounded-xl border border-border/50 max-w-[300px] max-h-[400px] object-cover bg-black/5 dark:bg-white/5"
+                    className="rounded-2xl border border-border/50 max-w-[300px] max-h-[400px] object-cover bg-black/5 dark:bg-white/5"
                 />
 
                 {/* Media Type Badge (PDF & Images) */}
@@ -186,44 +186,52 @@ function ConversationNodeComponent(props: NodeProps) {
                     const BadgeIcon = isPdf ? FileText : ImageIcon;
 
                     return (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="absolute top-3 right-3 bg-primary text-primary-foreground p-2 rounded-lg shadow-md backdrop-blur-md z-10 flex items-center justify-center border border-white/10 transition-transform hover:scale-105 cursor-help">
-                                    <BadgeIcon className="h-4 w-4" />
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="bg-primary text-primary-foreground border-white/10 font-bold">
+                        <div className="absolute top-3 right-3 flex items-center gap-1 group/badge z-20">
+                            {/* The label (visible on hover) */}
+                            <div className="opacity-0 group-hover/badge:opacity-100 transition-all duration-200 bg-primary text-primary-foreground px-2 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 font-bold text-[11px] transform translate-x-2 group-hover/badge:translate-x-0 pointer-events-none whitespace-nowrap">
                                 {label}
-                            </TooltipContent>
-                        </Tooltip>
+                            </div>
+
+                            {/* The Icon */}
+                            <div className="bg-primary text-primary-foreground w-8 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 transition-transform hover:scale-105 cursor-default shrink-0">
+                                <BadgeIcon className="h-4 w-4" />
+                            </div>
+                        </div>
                     );
                 })()}
 
-                {/* Minimalist Handles (Only show on hover/select) */}
-                <Handle
-                    type="target"
-                    position={Position.Top}
-                    id="t"
-                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-                />
-                <Handle
-                    type="source"
-                    position={Position.Bottom}
-                    id="b"
-                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-                />
-                <Handle
-                    type="target"
-                    position={Position.Left}
-                    id="l"
-                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-                />
-                <Handle
-                    type="source"
-                    position={Position.Right}
-                    id="r"
-                    className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-                />
+                {/* Handles - Global Visibility on Connect & Border Straddling */}
+                {(() => {
+                    const activeConnection = useCanvasStore((state) => state.activeConnection);
+                    // Hit area: Large invisible square for easier targeting
+                    const hitAreaClass = "!w-10 !h-10 !bg-transparent !border-0 flex items-center justify-center group/handle z-50";
+
+                    const renderHandle = (type: 'source' | 'target', position: Position, handleId: string, offsetClass: string) => {
+                        const isActive = activeConnection?.nodeId === id && activeConnection?.handleId === handleId;
+                        return (
+                            <Handle
+                                type={type}
+                                position={position}
+                                id={handleId}
+                                className={cn(hitAreaClass, offsetClass)}
+                            >
+                                <div className={cn(
+                                    "w-3 h-3 bg-primary border-2 border-background rounded-full transition-all duration-200 pointer-events-none",
+                                    isActive ? "opacity-100 scale-110" : "opacity-0 group-hover/handle:opacity-100 group-hover/handle:scale-150"
+                                )} />
+                            </Handle>
+                        );
+                    };
+
+                    return (
+                        <>
+                            {renderHandle('target', Position.Top, 't', "-top-5")}
+                            {renderHandle('source', Position.Bottom, 'b', "-bottom-5")}
+                            {renderHandle('target', Position.Left, 'l', "-left-5")}
+                            {renderHandle('source', Position.Right, 'r', "-right-5")}
+                        </>
+                    );
+                })()}
             </div>
         );
     }
@@ -236,7 +244,7 @@ function ConversationNodeComponent(props: NodeProps) {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={cn(
-                'bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out relative',
+                'group bg-card rounded-2xl border shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out relative',
                 'hover:shadow-2xl',
                 'w-[450px]',
                 !selected && !isHovered && nodeData.hasChildren && isAssistant && 'w-[250px]',
@@ -253,13 +261,13 @@ function ConversationNodeComponent(props: NodeProps) {
         >
 
             <div className={cn(
-                'flex items-center gap-2 px-4 py-2 border-b rounded-t-xl',
+                'flex items-center gap-2 px-4 py-1.5 border-b rounded-t-xl',
                 isUser && 'bg-blue-500/10 border-blue-500/20',
                 isAssistant && 'bg-emerald-500/10 border-emerald-500/20'
             )}>
                 <div
                     className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0",
+                        "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0",
                         isAssistant ? "bg-primary" : "bg-blue-500"
                     )}
                     style={!isAssistant && nodeData.authorName ? {
@@ -458,30 +466,38 @@ function ConversationNodeComponent(props: NodeProps) {
             </div>
 
 
-            <Handle
-                type="target"
-                position={Position.Top}
-                id="t"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-            />
-            <Handle
-                type="source"
-                position={Position.Bottom}
-                id="b"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-            />
-            <Handle
-                type="target"
-                position={Position.Left}
-                id="l"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-            />
-            <Handle
-                type="source"
-                position={Position.Right}
-                id="r"
-                className="!w-3 !h-3 !bg-primary !border-2 !border-background hover:!scale-125 transition-transform opacity-0 group-hover:opacity-100"
-            />
+            {/* Handles - Global Visibility on Connect & Border Straddling */}
+            {(() => {
+                const activeConnection = useCanvasStore((state) => state.activeConnection);
+                // Hit area: Large invisible square for easier targeting
+                const hitAreaClass = "!w-10 !h-10 !bg-transparent !border-0 flex items-center justify-center group/handle z-50";
+
+                const renderHandle = (type: 'source' | 'target', position: Position, handleId: string, offsetClass: string) => {
+                    const isActive = activeConnection?.nodeId === id && activeConnection?.handleId === handleId;
+                    return (
+                        <Handle
+                            type={type}
+                            position={position}
+                            id={handleId}
+                            className={cn(hitAreaClass, offsetClass)}
+                        >
+                            <div className={cn(
+                                "w-3 h-3 bg-primary border-2 border-background rounded-full transition-all duration-200 pointer-events-none",
+                                isActive ? "opacity-100 scale-110" : "opacity-0 group-hover/handle:opacity-100 group-hover/handle:scale-150"
+                            )} />
+                        </Handle>
+                    );
+                };
+
+                return (
+                    <>
+                        {renderHandle('target', Position.Top, 't', "-top-5")}
+                        {renderHandle('source', Position.Bottom, 'b', "-bottom-5")}
+                        {renderHandle('target', Position.Left, 'l', "-left-5")}
+                        {renderHandle('source', Position.Right, 'r', "-right-5")}
+                    </>
+                );
+            })()}
 
             {/* Custom Agent Editor Dialog */}
             <Dialog open={isEditingPersona} onOpenChange={setIsEditingPersona}>

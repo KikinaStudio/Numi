@@ -89,7 +89,7 @@ export function TreeListDialog({ open, onOpenChange }: TreeListDialogProps) {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Saved Conversations</DialogTitle>
+                    <DialogTitle>Saved Trees</DialogTitle>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-2 mt-4">
@@ -99,7 +99,7 @@ export function TreeListDialog({ open, onOpenChange }: TreeListDialogProps) {
                         </div>
                     ) : trees.length === 0 ? (
                         <div className="text-center text-muted-foreground p-8">
-                            No saved conversations found.
+                            No saved trees found.
                         </div>
                     ) : (
                         trees.map((tree) => (

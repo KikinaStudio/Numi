@@ -20,7 +20,7 @@ import NodeContextMenu from './NodeContextMenu';
 import SimpleFloatingEdge from './SimpleFloatingEdge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
@@ -451,6 +451,14 @@ function Canvas() {
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
+                    onConnectStart={(_, params) => {
+                        useCanvasStore.getState().setIsConnecting(true);
+                        useCanvasStore.getState().setActiveConnection(params);
+                    }}
+                    onConnectEnd={() => {
+                        useCanvasStore.getState().setIsConnecting(false);
+                        useCanvasStore.getState().setActiveConnection(null);
+                    }}
                     onPointerMove={handlePointerMove}
                     onPaneClick={onPaneClick}
                     onDoubleClick={onPaneDoubleClick}
@@ -459,18 +467,21 @@ function Canvas() {
                     edgeTypes={edgeTypes}
                     defaultEdgeOptions={defaultEdgeOptions}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-                    snapToGrid
-                    snapGrid={[20, 20]}
+                    // Performance & Mobile Optimizations
+                    onlyRenderVisibleElements={true}
                     minZoom={0.1}
                     maxZoom={2}
+                    proOptions={{ hideAttribution: true }}
+
+                    // Interaction Settings
+                    snapToGrid
+                    snapGrid={[20, 20]}
                     panOnScroll
                     panOnDrag
                     selectionOnDrag={false}
                     zoomOnScroll={false}
                     zoomOnDoubleClick={false}
                     zoomOnPinch
-                    attributionPosition="bottom-left"
-                    proOptions={{ hideAttribution: true }}
                 >
                     <Background
                         variant={BackgroundVariant.Dots}
@@ -618,12 +629,11 @@ function Canvas() {
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="gap-2"
+                                className="h-9 w-9 p-0"
                                 onClick={() => setShowSettings(true)}
                                 title="Settings (API Keys & Models)"
                             >
                                 <Settings className="h-4 w-4" />
-                                Settings
                             </Button>
                             <div className="w-px h-6 bg-border" />
                             <Button
@@ -633,7 +643,7 @@ function Canvas() {
                                 onClick={handleShare}
                                 title="Share Link"
                             >
-                                <Share2 className="h-4 w-4" />
+                                <UserPlus className="h-4 w-4" />
                                 Share
                             </Button>
                         </div>
@@ -678,7 +688,7 @@ function Canvas() {
                     <div className="fixed inset-0 z-[2000] bg-background/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
                         <div className="flex flex-col items-center gap-4">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                            <p className="text-sm font-bold text-muted-foreground animate-pulse">Chargement de la conversation...</p>
+                            <p className="text-sm font-bold text-muted-foreground animate-pulse">Chargement de l'arbre...</p>
                         </div>
                     </div>
                 )}

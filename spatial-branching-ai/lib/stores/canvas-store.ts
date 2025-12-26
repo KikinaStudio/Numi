@@ -64,10 +64,9 @@ interface CanvasState {
     edges: Edge[];
     selectedNodeId: string | null;
     textSelection: TextSelection | null;
+    isConnecting: boolean; // Global connection drag state
+    activeConnection: { nodeId: string | null; handleId: string | null; handleType: string | null } | null;
     contextMenu: { x: number; y: number; nodeId: string } | null;
-    // UI State
-    isConnecting: boolean;
-    isLoading: boolean;
     collaborators: Record<string, Collaborator>;
     me: Collaborator | null;
 
@@ -79,6 +78,7 @@ interface CanvasState {
     syncError: string | null;
     realtimeStatus: 'CONNECTING' | 'SUBSCRIBED' | 'DISCONNECTED' | 'ERROR';
     lastRealtimeEvent: string | null;
+    isLoading: boolean;
 
     // Actions
     setNodes: (nodes: ConversationNode[]) => void;
@@ -94,8 +94,10 @@ interface CanvasState {
     deleteNode: (id: string) => void;
     clearCanvas: () => void;
 
-    // Selection
+    // Selection & UI
     selectNode: (id: string | null) => void;
+    setIsConnecting: (isConnecting: boolean) => void;
+    setActiveConnection: (connection: { nodeId: string | null; handleId: string | null; handleType: string | null } | null) => void;
     setTextSelection: (selection: TextSelection | null) => void;
     setContextMenu: (menu: { x: number; y: number; nodeId: string } | null) => void;
     setCollaborators: (collaborators: Record<string, Collaborator>) => void;
@@ -141,6 +143,7 @@ export const useCanvasStore = create<CanvasState>()(
             textSelection: null,
             contextMenu: null,
             isConnecting: false,
+            activeConnection: null,
             treeId: null,
             ownerId: null,
             treeName: 'Untitled Conversation',
@@ -249,6 +252,8 @@ export const useCanvasStore = create<CanvasState>()(
 
             // Selection & UI
             selectNode: (id) => set({ selectedNodeId: id }),
+            setIsConnecting: (isConnecting: boolean) => set({ isConnecting }),
+            setActiveConnection: (activeConnection) => set({ activeConnection }),
             setTextSelection: (selection) => set({ textSelection: selection }),
             setContextMenu: (menu) => set({ contextMenu: menu }),
             setCollaborators: (collaborators) => set({ collaborators }),
