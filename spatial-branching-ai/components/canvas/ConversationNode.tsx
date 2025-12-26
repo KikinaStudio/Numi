@@ -189,7 +189,7 @@ function ConversationNodeComponent(props: NodeProps) {
                 <img
                     src={nodeData.fileUrl}
                     alt={nodeData.fileName}
-                    className="rounded-2xl border border-border/50 max-w-[300px] max-h-[400px] object-cover bg-black/5 dark:bg-white/5"
+                    className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
                 />
 
                 {/* Media Type Badge (PDF & Images) */}
@@ -268,82 +268,93 @@ function ConversationNodeComponent(props: NodeProps) {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={cn(
-                'group bg-background/40 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md transition-all duration-300 ease-in-out relative',
-                'hover:shadow-2xl',
+                'group bg-background/40 rounded-2xl border border-black/5 dark:border-white/10 shadow-sm backdrop-blur-md transition-all duration-500 ease-out relative',
+                'hover:shadow-xl hover:-translate-y-0.5',
                 'w-[450px]',
-                !selected && !isHovered && nodeData.hasChildren && isAssistant && 'w-[250px]',
+                !selected && !isHovered && nodeData.hasChildren && 'w-[250px]',
                 selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
-                (isHovered || selected) && 'shadow-2xl ring-1 ring-primary/20',
+                (isHovered || selected) && 'ring-1 ring-primary/20',
                 nodeData.isGenerating && 'animate-pulse'
             )}
             style={isUser && effectiveColor ? {
-                borderColor: `${effectiveColor}33`, // 20% opacity
-                background: `linear-gradient(to bottom right, ${effectiveColor}15, ${effectiveColor}05)`, // 8%, 2%
-                boxShadow: isHovered || selected ? `0 10px 30px -10px ${effectiveColor}33` : undefined // Colored shadow on hover
+                borderColor: `${effectiveColor}20`, // Even more subtle color border
+                background: `linear-gradient(to bottom right, ${effectiveColor}10, ${effectiveColor}03)`, // Very faint tint
+                boxShadow: isHovered || selected ? `0 12px 40px -12px ${effectiveColor}25` : undefined
             } : {}}
         >
+            {/* Invisible Top Drag Handle */}
+            <div className="absolute inset-x-0 top-0 h-10 z-10 cursor-grab active:cursor-grabbing" />
 
+            {/* Draggable Handle Gradient (Assistant Only) */}
             <div className={cn(
-                'flex items-center gap-3 px-6 py-3.5 rounded-t-xl transition-all duration-300',
-                isAssistant && 'bg-gradient-to-b from-muted-foreground/10 via-muted/5 to-transparent', // Grayish hint at top
-            )}
-                style={isUser && effectiveColor ? {
-                    background: `linear-gradient(to bottom, ${effectiveColor}1a, ${effectiveColor}05)`, // 10% to 2% gradient
-                } : {}}
-            >
-                <div
-                    className={cn(
-                        "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0",
-                        isAssistant && "bg-primary" // Default primary for assistant
-                    )}
-                    style={isUser && effectiveColor ? {
-                        backgroundColor: effectiveColor
-                    } : {}}
-                >
-                    {isAssistant ? (() => {
-                        const persona = PERSONAS.find(p => p.id === (nodeData.selectedPersonaId || 'standard'));
-                        const IconComponent = (() => {
-                            switch (persona?.icon) {
-                                case 'Search': return Search;
-                                case 'CheckSquare': return CheckSquare;
-                                case 'Zap': return Zap;
-                                case 'TrendingUp': return TrendingUp;
-                                case 'Heart': return Heart;
-                                case 'Sparkles': return Sparkles;
-                                case 'Settings': return Settings;
-                                default: return Bot;
-                            }
-                        })();
-                        return <IconComponent className="h-4 w-4" />;
-                    })() : (
-                        <span className="leading-none">
-                            {(nodeData.authorName || 'Guest').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                        </span>
-                    )}
-                </div>
-                <span className="text-sm font-medium text-muted-foreground truncate">
-                    {isUser ? (
-                        nodeData.authorName || 'Guest'
-                    ) : (
-                        nodeData.selectedPersonaId === 'custom'
-                            ? nodeData.customPersona?.name || 'Custom Agent'
-                            : (nodeData.selectedPersonaId
-                                ? (PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel === 'Standard AI' ? 'Answer' : PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Answer')
-                                : 'Answer')
-                    )}
-                </span>
-                {
-                    nodeData.isGenerating && (
-                        <Sparkles className="h-4 w-4 text-yellow-500 animate-spin ml-auto" />
-                    )
-                }
+                'absolute inset-x-0 top-0 h-14 rounded-t-2xl transition-all duration-300 z-0',
+                isAssistant && 'bg-gradient-to-b from-muted-foreground/5 via-muted/5 to-transparent'
+            )} />
+
+            {/* Floating User/Bot Icon */}
+            <div className="absolute top-2 left-2 z-20">
+                <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                            <div
+                                className={cn(
+                                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0",
+                                    isAssistant && "bg-primary"
+                                )}
+                                style={isUser && effectiveColor ? {
+                                    backgroundColor: effectiveColor
+                                } : {}}
+                            >
+                                {isAssistant ? (() => {
+                                    const persona = PERSONAS.find(p => p.id === (nodeData.selectedPersonaId || 'standard'));
+                                    const IconComponent = (() => {
+                                        switch (persona?.icon) {
+                                            case 'Search': return Search;
+                                            case 'CheckSquare': return CheckSquare;
+                                            case 'Zap': return Zap;
+                                            case 'TrendingUp': return TrendingUp;
+                                            case 'Heart': return Heart;
+                                            case 'Sparkles': return Sparkles;
+                                            case 'Settings': return Settings;
+                                            default: return Bot;
+                                        }
+                                    })();
+                                    return <IconComponent className="h-3.5 w-3.5" />;
+                                })() : (
+                                    <span className="leading-none">
+                                        {(nodeData.authorName || 'Guest').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                    </span>
+                                )}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={10} className="bg-zinc-950 text-white border-0 text-[10px] font-bold px-3 py-1.5 rounded-md shadow-xl tracking-wide">
+                            {isUser ? (
+                                nodeData.authorName || 'Guest'
+                            ) : (
+                                nodeData.selectedPersonaId === 'custom'
+                                    ? nodeData.customPersona?.name || 'Custom Agent'
+                                    : (nodeData.selectedPersonaId
+                                        ? (PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel === 'Standard AI' ? 'Answer' : PERSONAS.find(p => p.id === nodeData.selectedPersonaId)?.shortLabel || 'Answer')
+                                        : 'Answer')
+                            )}
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
 
             {
+                nodeData.isGenerating && (
+                    <div className="absolute top-3 right-3 z-20">
+                        <Sparkles className="h-4 w-4 text-yellow-500 animate-spin" />
+                    </div>
+                )
+            }
+
+            {
                 nodeData.branchContext && (
-                    <div className="px-6 py-4 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-4 group transition-colors hover:bg-blue-500/10">
-                        <GitBranch className="h-4 w-4 text-blue-500 shrink-0" />
-                        <p className="text-[15px] text-foreground leading-relaxed font-medium">
+                    <div className="mt-10 px-6 py-3 bg-blue-500/5 border-b border-blue-500/10 flex items-center gap-4 group transition-colors hover:bg-blue-500/10 relative z-10">
+                        <GitBranch className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                        <p className="text-[13px] text-foreground/80 leading-relaxed font-medium">
                             {nodeData.branchContext}
                         </p>
                     </div>
@@ -358,7 +369,10 @@ function ConversationNodeComponent(props: NodeProps) {
                         defaultValue={nodeData.content}
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        className="w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] px-6 pt-2 pb-14"
+                        className={cn(
+                            "w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed px-6 pb-8",
+                            nodeData.branchContext ? "pt-5" : "pt-12" // Add top padding if no branch context to clear icon
+                        )}
                         placeholder={!nodeData.parentId ? "Welcome to Numi ! Type your idea or ask for help ..." : "Type your message here..."}
                     />
                 ) : (
@@ -373,11 +387,12 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text px-6 pt-2 pb-14 min-h-[100px] nopan nodrag nowheel',
+                            'prose-notion select-text cursor-text px-6 pb-8 min-h-[100px] nopan nodrag nowheel',
+                            nodeData.branchContext ? "pt-5" : "pt-12", // Add top padding if no branch context to clear icon
                             !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground italic',
-                            !selected && !isHovered && nodeData.hasChildren && isAssistant && "max-h-[120px] overflow-hidden"
+                            !selected && !isHovered && nodeData.hasChildren && "max-h-[120px] overflow-hidden"
                         )}
-                        style={!selected && !isHovered && nodeData.hasChildren && isAssistant ? {
+                        style={!selected && !isHovered && nodeData.hasChildren ? {
                             WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
                             maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
                         } : {}}
@@ -413,7 +428,7 @@ function ConversationNodeComponent(props: NodeProps) {
                                 isUser ? (!nodeData.parentId ? "Welcome to Numi ! Type your idea or ask for help ..." : "Click to type...") : 'Generating...'
                             )
                         }
-                        {!selected && !isHovered && nodeData.hasChildren && isAssistant && (
+                        {!selected && !isHovered && nodeData.hasChildren && (
                             <div className="absolute bottom-1 left-0 right-0 flex justify-center pb-1 pointer-events-none">
                                 <div className="h-1.5 w-8 rounded-full bg-muted-foreground/30 animate-pulse" />
                             </div>
