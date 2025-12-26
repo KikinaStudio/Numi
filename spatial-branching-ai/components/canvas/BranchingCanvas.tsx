@@ -21,7 +21,7 @@ import NodeContextMenu from './NodeContextMenu';
 import SimpleFloatingEdge from './SimpleFloatingEdge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
@@ -727,6 +727,21 @@ function Canvas() {
                             >
                                 <FilePlus className="h-4 w-4" />
                                 Add
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={() => {
+                                    const temporal = useCanvasStore.temporal;
+                                    if (temporal) {
+                                        temporal.getState().undo();
+                                    }
+                                }}
+                                title="Undo (Ctrl/Cmd + Z)"
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                                Undo
                             </Button>
                             <Button
                                 size="sm"
