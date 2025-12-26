@@ -39,12 +39,8 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         setShowKey(prev => ({ ...prev, [provider]: !prev[provider] }));
     };
 
-    // Filter models based on OpenRouter key availability
-    // Strict logic: Show ALL only if OpenRouter Key is present. 
-    // Otherwise only show Xiaomi MiMo (Free)
-    const availableModels = apiKeys.openrouter?.trim()
-        ? MODELS
-        : MODELS.filter(m => m.id === 'xiaomi/mimo-v2-flash:free');
+    // Logic: Show all models, but disable premium ones if OpenRouter key is missing.
+    const hasOpenRouterKey = !!apiKeys.openrouter?.trim();
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,23 +152,27 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                             </p>
                         </div>
 
-                        {/* Model Selection (Conditional) */}
+                        {/* Model Selection */}
                         <div className="space-y-2 pt-2">
                             <label className="text-sm font-medium leading-none">
                                 Default Model
                             </label>
                             <select
-                                value={availableModels.find(m => m.id === defaultModel) ? defaultModel : availableModels[0].id}
+                                value={defaultModel}
                                 onChange={(e) => setDefaultModel(e.target.value)}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {availableModels.map(model => (
-                                    <option key={model.id} value={model.id}>
+                                {MODELS.map(model => (
+                                    <option
+                                        key={model.id}
+                                        value={model.id}
+                                        disabled={!hasOpenRouterKey && model.id !== 'xiaomi/mimo-v2-flash:free'}
+                                    >
                                         {model.name}
                                     </option>
                                 ))}
                             </select>
-                            {!apiKeys.openrouter?.trim() && (
+                            {!hasOpenRouterKey && (
                                 <p className="text-[11px] text-amber-500/90 font-medium flex items-center gap-1.5">
                                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                                     Add OpenRouter key above to unlock 5+ premium models.
