@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useMemo, useState, useEffect } from 'react';
+import { useCallback, useRef, useMemo, useState, useEffect, memo } from 'react';
 import {
     ReactFlow,
     Background,
@@ -14,6 +14,7 @@ import {
     PanOnScrollMode,
 } from '@xyflow/react';
 import { useCanvasStore, useNodes, useEdges, ConversationNodeData, useTemporalStore, USER_COLORS } from '@/lib/stores/canvas-store';
+import { useShallow } from 'zustand/react/shallow';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
@@ -53,6 +54,31 @@ interface ContextMenuState {
     nodeId: string;
 }
 
+// --- MEMOIZED COLLABORATORS ---
+const CollaboratorsCursors = memo(() => {
+    const { collaborators, meId } = useCanvasStore(useShallow(state => ({
+        collaborators: state.collaborators,
+        meId: state.me?.id
+    })));
+
+    return (
+        <>
+            {Object.values(collaborators)
+                .filter(c => c.id !== meId && c.mousePos)
+                .map(c => (
+                    <CollaboratorCursor
+                        key={c.id}
+                        x={c.mousePos!.x}
+                        y={c.mousePos!.y}
+                        name={c.name}
+                        color={c.color}
+                    />
+                ))}
+        </>
+    );
+});
+CollaboratorsCursors.displayName = 'CollaboratorsCursors';
+
 function Canvas() {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const { theme } = useSettingsStore();
@@ -60,49 +86,86 @@ function Canvas() {
 
     const nodes = useNodes();
     const edges = useEdges();
-    const onNodesChange = useCanvasStore((state) => state.onNodesChange);
-    const onEdgesChange = useCanvasStore((state) => state.onEdgesChange);
-    const onConnect = useCanvasStore((state) => state.onConnect);
-    const createRootNode = useCanvasStore((state) => state.createRootNode);
-    const createChildNode = useCanvasStore((state) => state.createChildNode);
-    const selectNode = useCanvasStore((state) => state.selectNode);
-    const deleteNode = useCanvasStore((state) => state.deleteNode);
-    const clearCanvas = useCanvasStore((state) => state.clearCanvas);
-    const treeName = useCanvasStore((state) => state.treeName);
-    const setTreeName = useCanvasStore((state) => state.setTreeName);
-    const textSelection = useCanvasStore((state) => state.textSelection);
-    const setTextSelection = useCanvasStore((state) => state.setTextSelection);
-    const contextMenu = useCanvasStore((state) => state.contextMenu);
-    const setContextMenu = useCanvasStore((state) => state.setContextMenu);
-    const syncStatus = useCanvasStore((state) => state.syncStatus);
-    const syncError = useCanvasStore((state) => state.syncError);
-    const collaborators = useCanvasStore((state) => state.collaborators);
-    const treeId = useCanvasStore((state) => state.treeId);
-    const ownerId = useCanvasStore((state) => state.ownerId);
+
+    const {
+        onNodesChange,
+        onEdgesChange,
+        onConnect,
+        createRootNode,
+        createChildNode,
+        selectNode,
+        deleteNode,
+        clearCanvas,
+        treeName,
+        setTreeName,
+        textSelection,
+        setTextSelection,
+        contextMenu,
+        setContextMenu,
+        syncStatus,
+        syncError,
+        treeId,
+        ownerId,
+        isLoading,
+        isConnecting
+    } = useCanvasStore(useShallow((state) => ({
+        onNodesChange: state.onNodesChange,
+        onEdgesChange: state.onEdgesChange,
+        onConnect: state.onConnect,
+        createRootNode: state.createRootNode,
+        createChildNode: state.createChildNode,
+        selectNode: state.selectNode,
+        deleteNode: state.deleteNode,
+        clearCanvas: state.clearCanvas,
+        treeName: state.treeName,
+        setTreeName: state.setTreeName,
+        textSelection: state.textSelection,
+        setTextSelection: state.setTextSelection,
+        contextMenu: state.contextMenu,
+        setContextMenu: state.setContextMenu,
+        syncStatus: state.syncStatus,
+        syncError: state.syncError,
+        treeId: state.treeId,
+        ownerId: state.ownerId,
+        isLoading: state.isLoading,
+        isConnecting: state.isConnecting
+    })));
 
     // Compute hasChildren and branchedTexts for nodes to enable compact view and highlighting
     const nodesWithMetadata = useMemo(() => {
-        const parentIds = new Set(edges.map(e => e.source));
-
-        // Group branchContexts by parentId
+        // Optimized metadata calculation
+        const parentIds = new Set<string>();
         const branchContextsMap = new Map<string, string[]>();
-        edges.forEach(edge => {
+
+        for (const edge of edges) {
+            parentIds.add(edge.source);
             const childNode = nodes.find(n => n.id === edge.target);
             if (childNode?.data?.branchContext) {
                 const contexts = branchContextsMap.get(edge.source) || [];
                 contexts.push(childNode.data.branchContext);
                 branchContextsMap.set(edge.source, contexts);
             }
-        });
+        }
 
-        return nodes.map(n => ({
-            ...n,
-            data: {
-                ...n.data,
-                hasChildren: parentIds.has(n.id),
-                branchedTexts: branchContextsMap.get(n.id) || []
+        return nodes.map(n => {
+            const hasChildren = parentIds.has(n.id);
+            const branchedTexts = branchContextsMap.get(n.id) || [];
+
+            // Only update data object if metadata actually changed to prevent downstream re-renders
+            if (n.data.hasChildren === hasChildren &&
+                JSON.stringify((n.data as any).branchedTexts) === JSON.stringify(branchedTexts)) {
+                return n;
             }
-        }));
+
+            return {
+                ...n,
+                data: {
+                    ...n.data,
+                    hasChildren,
+                    branchedTexts
+                }
+            };
+        });
     }, [nodes, edges]);
 
     // Keyboard Shortcuts (Undo)
@@ -124,7 +187,6 @@ function Canvas() {
 
     // Persistence hook for auto-saving
     const { saveTree } = usePersistence();
-    const isLoading = useCanvasStore(s => s.isLoading);
 
     const [showTreeList, setShowTreeList] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -186,9 +248,11 @@ function Canvas() {
 
     // Sync 'me' name when userName changes in settings
     const userName = useSettingsStore(s => s.userName);
-    const setMe = useCanvasStore(s => s.setMe);
-    const updateCollaborator = useCanvasStore(s => s.updateCollaborator);
-    const me = useCanvasStore(s => s.me);
+    const { setMe, updateCollaborator, me } = useCanvasStore(useShallow(s => ({
+        setMe: s.setMe,
+        updateCollaborator: s.updateCollaborator,
+        me: s.me
+    })));
     const isOwner = useMemo(() => {
         if (!treeId || !ownerId) return true; // Newly created tree or legacy tree without owner
         return me?.id === ownerId;
@@ -328,18 +392,8 @@ function Canvas() {
         },
     }), [theme]);
 
-    // Drag & Drop Handler
-    const onDragOver = useCallback((event: React.DragEvent) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'copy';
-    }, []);
-
-    const onDrop = useCallback(async (event: React.DragEvent) => {
-        event.preventDefault();
-
-        const file = event.dataTransfer.files[0];
-        if (!file) return;
-
+    // Unified File Upload Handler
+    const handleFileUpload = useCallback(async (file: File, position: { x: number, y: number }) => {
         if (!supabase) {
             alert('Supabase client not initialized. Check your environment variables.');
             return;
@@ -351,23 +405,31 @@ function Canvas() {
             const isPdf = file.type === 'application/pdf';
 
             if (!isImage && !isPdf) {
-                // If it's not a recognized MIME type, strict fail, 
-                // but checking "file.name" extension as fallback might be safer if browser issues occur
                 if (!file.name.toLowerCase().endsWith('.pdf') && !file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
                     alert('Only images and PDFs are supported.');
                     return;
                 }
             }
 
-            const position = screenToFlowPosition({
-                x: event.clientX,
-                y: event.clientY,
-            });
+            // ----------------------------------------------------------------------
+            // STORAGE QUOTA CHECK (10MB Limit)
+            // ----------------------------------------------------------------------
+            const MAX_TREE_SIZE = 10 * 1024 * 1024; // 10 MB in bytes
+
+            // Calculate current total size of files in the tree
+            const currentTotalSize = useCanvasStore.getState().nodes.reduce((acc, node) => {
+                return acc + (node.data.fileSize || 0);
+            }, 0);
+
+            if (currentTotalSize + file.size > MAX_TREE_SIZE) {
+                const currentMB = (currentTotalSize / (1024 * 1024)).toFixed(2);
+                alert(`Storage limit exceeded (10MB per tree).\nCurrent usage: ${currentMB}MB.\nFile size: ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                return;
+            }
 
             // Handle PDF
             if (isPdf) {
                 // 1. Convert PDF to images
-                // Note: We might need to handle loading state here as PDF conversion takes time
                 const pageImages = await convertPdfToImages(file);
                 if (pageImages.length === 0) throw new Error("Could not extract pages from PDF");
 
@@ -407,6 +469,7 @@ function Canvas() {
                 useCanvasStore.getState().updateNode(nodeId, {
                     fileUrl: pageUrls[0], // Show first page as preview
                     fileName: file.name,
+                    fileSize: file.size, // Store file size
                     mimeType: file.type,
                     role: 'user',
                     // Store extra metadata for PDF
@@ -439,6 +502,7 @@ function Canvas() {
             useCanvasStore.getState().updateNode(nodeId, {
                 fileUrl: publicUrl,
                 fileName: file.name,
+                fileSize: file.size, // Store file size
                 mimeType: file.type,
                 role: 'user' // Files are user inputs
             });
@@ -447,7 +511,49 @@ function Canvas() {
             console.error('Upload failed:', error);
             alert(`Upload failed: ${error.message}`);
         }
-    }, [screenToFlowPosition, treeId]);
+    }, [treeId]);
+
+    // Drag & Drop Handler
+    const onDragOver = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+    }, []);
+
+    const onDrop = useCallback(async (event: React.DragEvent) => {
+        event.preventDefault();
+
+        const file = event.dataTransfer.files[0];
+        if (!file) return;
+
+        const position = screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
+        });
+
+        await handleFileUpload(file, position);
+    }, [screenToFlowPosition, handleFileUpload]);
+
+    // File Input Handler
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const onFileInputChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Place in center of current view
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+
+        const position = screenToFlowPosition({
+            x: centerX,
+            y: centerY,
+        });
+
+        await handleFileUpload(file, position);
+
+        // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }, [handleFileUpload, screenToFlowPosition]);
 
     return (
         <TooltipProvider>
@@ -460,6 +566,7 @@ function Canvas() {
                 <ReactFlow
                     nodes={nodesWithMetadata}
                     edges={edges}
+                    className={cn(isConnecting && 'is-connecting')}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
@@ -521,26 +628,19 @@ function Canvas() {
 
 
 
-                    {/* Live Cursors Overlay */}
-                    {/* We render check for collaborators directly using the store values */}
-                    {Object.values(collaborators)
-                        .filter(c => c.id !== me?.id && c.mousePos) // Don't show my own cursor
-                        .map(c => (
-                            <CollaboratorCursor
-                                key={c.id}
-                                x={c.mousePos!.x}
-                                y={c.mousePos!.y}
-                                name={c.name}
-                                color={c.color}
-                            />
-                        ))}
+                    {/* Live Cursors Overlay - Memoized to prevent Canvas re-renders */}
+                    <CollaboratorsCursors />
 
 
                     {/* Tree Name Panel */}
                     <Panel position="top-left" className="m-4">
                         <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
-                            <div className="flex items-center gap-2 pr-3 border-r border-border">
-                                <img src="/numi-tree-logo.png" alt="Numi" className="h-6 w-auto" />
+                            <div className="flex items-center gap-2 pr-2 border-r border-border">
+                                <img
+                                    src={theme === 'dark' ? "/assets/logo/logo-white-bg.png" : "/assets/logo/logo-black-bg.png"}
+                                    alt="Numi"
+                                    className="h-7 w-auto rounded-md shadow-sm"
+                                />
                             </div>
                             <div className="relative group">
                                 <Input
@@ -559,35 +659,43 @@ function Canvas() {
                         </div>
                     </Panel>
                     <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
-                        {/* Collaborators List (Including Me) */}
-                        {Object.keys(collaborators).length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center -space-x-3">
-                                    {Object.values(collaborators).map((c) => {
-                                        const initials = c.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                                        return (
-                                            <Tooltip key={c.id}>
-                                                <TooltipTrigger asChild>
-                                                    <div
-                                                        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[11px] font-extrabold text-white shadow-lg hover:translate-y-[-2px] hover:z-20 transition-all cursor-pointer duration-200"
-                                                        style={{ backgroundColor: c.color }}
-                                                    >
-                                                        <span className="leading-none drop-shadow-sm">{initials || '?'}</span>
-                                                    </div>
-                                                </TooltipTrigger>
-                                                <TooltipContent side="bottom" sideOffset={10} className="font-bold">
-                                                    <p>{c.name} {c.id === me?.id ? '(You)' : ''}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        );
-                                    })}
+                        {/* Collaborators List (Including Me) - Selective Selector */}
+                        {(() => {
+                            const collaborators = useCanvasStore(state => state.collaborators);
+                            const meId = useCanvasStore(state => state.me?.id);
+                            const count = Object.keys(collaborators).length;
+
+                            if (count === 0) return null;
+
+                            return (
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center -space-x-3">
+                                        {Object.values(collaborators).map((c) => {
+                                            const initials = c.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                                            return (
+                                                <Tooltip key={c.id}>
+                                                    <TooltipTrigger asChild>
+                                                        <div
+                                                            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-2 ring-background text-[11px] font-extrabold text-white shadow-lg hover:translate-y-[-2px] hover:z-20 transition-all cursor-pointer duration-200"
+                                                            style={{ backgroundColor: c.color }}
+                                                        >
+                                                            <span className="leading-none drop-shadow-sm">{initials || '?'}</span>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom" sideOffset={10} className="font-bold">
+                                                        <p>{c.name} {c.id === meId ? '(You)' : ''}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="flex items-center px-4 h-10 bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md border border-white/10 rounded-full shadow-lg text-[12px] font-bold text-white whitespace-nowrap">
+                                        <Users className="h-3.5 w-3.5 mr-2 opacity-70" />
+                                        {count}
+                                    </div>
                                 </div>
-                                <div className="flex items-center px-4 h-10 bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md border border-white/10 rounded-full shadow-lg text-[12px] font-bold text-white whitespace-nowrap">
-                                    <Users className="h-3.5 w-3.5 mr-2 opacity-70" />
-                                    {Object.keys(collaborators).length}
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </Panel>
 
 
@@ -607,8 +715,18 @@ function Canvas() {
                                 }}
                                 title="New Conversation"
                             >
-                                <FilePlus className="h-4 w-4" />
+                                <Plus className="h-4 w-4" />
                                 New
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="gap-2"
+                                onClick={() => fileInputRef.current?.click()}
+                                title="Add Image or PDF"
+                            >
+                                <FilePlus className="h-4 w-4" />
+                                Add
                             </Button>
                             <Button
                                 size="sm"
@@ -700,6 +818,15 @@ function Canvas() {
                     onComplete={() => {
                         useCanvasStore.getState().createRootNode({ x: 100, y: 300 });
                     }}
+                />
+
+                {/* Hidden File Input for "Add" button */}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*,.pdf"
+                    onChange={onFileInputChange}
                 />
             </div >
         </TooltipProvider >

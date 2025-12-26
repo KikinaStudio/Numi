@@ -21,6 +21,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
     isGenerating?: boolean;
     fileUrl?: string; // For images/files
     fileName?: string;
+    fileSize?: number; // Size in bytes
     mimeType?: string;
     pdfUrl?: string; // Original PDF URL
     pdfPages?: string[]; // Array of image URLs for each page

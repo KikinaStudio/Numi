@@ -257,3 +257,9 @@
 .dark .branched-highlight {
   background-color: rgba(96, 165, 250, 0.2);
 }
+
+/* Performance: Global handle visibility during connection */
+.react-flow__pane.is-connecting .react-flow__handle>div {
+  opacity: 1 !important;
+  transform: scale(1.2) !important;
+}

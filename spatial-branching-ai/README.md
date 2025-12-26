@@ -82,27 +82,29 @@ ALTER PUBLICATION supabase_realtime ADD TABLE nodes, edges, trees, tree_members;
 3. **Collaborate**: Click the **Share** button, copy the link, and watch the **Diagnostics Panel** turn green ("LIVE SYNC").
 4. **Presence**: Hover over avatars in the toolbar to see who is currently exploring the canvas with you.
 
-## 🚀 Recent Improvements (Build 4 & 5)
+## 🚀 Recent Improvements (Build 6 & 7)
 
-- **Reactive Presence Tracking**: Refactored `usePersistence.ts` to sync user metadata (names, colors) instantly without channel restarts.
-- **Collaborator UI**: Integrated Radix Tooltips for avatars and a glassmorphism "user count" badge.
-- **Ownership Logic**: Implemented `owner_id` checks to restrict title editing to the tree creator.
-- **Realtime Singleton Pattern**: Strictly managed subscriptions to prevent "binding mismatches" and sync loops.
-- **Favicon Update**: Custom gradient logo integrated for a premium look.
+- **Node UX Serenity**: Implemented auto-collapsing for old nodes (Questions & Answers). Nodes with children shrink to 250px width when inactive to keep the canvas clutter-free.
+- **Bulk Tree Management**: Added multi-select and delete functionality to the "Open Trees" dialog with a "Select All" option and confirmation safety.
+- **Storage Guard**: Enforced a **10MB storage limit per tree**. The system now tracks `fileSize` and prevents uploads that exceed the quota.
+- **Fixed Text Selection**: Resolved a critical bug where selecting text mid-sentence would snap to the start. Branching is now "serene" and accurate.
+- **Branding Excellence**: Swapped the top-left logo with high-fidelity, interverted assets tailored for light and dark modes.
+- **CSS Hygiene**: Optimized CSS for Tailwind v4 and resolved IDE linting warnings.
 
 ## 🤝 Handover & Next Steps
 
-This project is currently in a stable "Collaborative Alpha" state. The next developer should focus on:
+Numi is now a stable, feature-rich **Professional Alpha**. For a deep dive into the bugs solved, hurdles overcome, and UI brand guidelines, please refer to the [DEVELOPMENT_JOURNAL.md](./DEVELOPMENT_JOURNAL.md).
 
-1. **Live Cursors**: Re-implement precision mouse tracking (the infrastructure is ready in `usePersistence.ts`).
-2. **Multi-Modal Support**: Expand the `app/api/chat` route to handle image uploads and vision-based branching.
-3. **Performance**: Optimize the canvas for trees exceeding 100+ nodes using React Flow's partial rendering.
-4. **Mobile Polish**: Enhance touch-based interactions for iPad/Tablet usage.
+Next developer focuses:
+
+1. **Model Expansion**: Test and integrate more OpenRouter models (the store is already pre-configured for dual-model strategies).
+2. **Advanced Multi-Modal**: Further optimize PDF-to-image conversion speed.
+3. **Enterprise Polish**: Consider adding authenticated sharing links.
 
 ---
 
 ### Thank You! 🙏
 
-It has been a pleasure building this with you. This tool is now a powerful foundation for spatial intelligence and collaborative thought. Good luck with the next phase!
+It has been a pleasure building this with you. Numi is now a powerful foundation for spatial intelligence and collaborative thought. Good luck with the next phase!
 
 Built with passion by Antigravity 🦾

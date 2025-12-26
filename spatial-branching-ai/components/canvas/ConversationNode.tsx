@@ -1,7 +1,8 @@
 'use client';
 
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useRef, useState, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
@@ -34,12 +35,72 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
+// --- MEMOIZED SUB-COMPONENTS ---
+
+const MarkdownContent = memo(({ content, branchedTexts }: { content: string, branchedTexts: string[] }) => {
+    return (
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+            components={{
+                p: ({ ...props }) => <p {...props} className="mb-4 last:mb-0" />,
+            }}
+        >
+            {(() => {
+                let processedContent = content;
+                const sortedBranches = [...new Set(branchedTexts)].sort((a, b) => b.length - a.length);
+
+                sortedBranches.forEach(branch => {
+                    if (!branch || typeof branch !== 'string' || !branch.trim()) return;
+                    const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(${escaped})`, 'gi');
+                    processedContent = processedContent.replace(regex, '<span class="branched-highlight">$1</span>');
+                });
+                return processedContent;
+            })()}
+        </ReactMarkdown>
+    );
+});
+MarkdownContent.displayName = 'MarkdownContent';
+
+const NodeHandles = memo(({ id }: { id: string }) => {
+    const activeConnection = useCanvasStore(useShallow(state => state.activeConnection));
+    const hitAreaClass = "!w-10 !h-10 !bg-transparent !border-0 flex items-center justify-center group/handle z-50";
+
+    const renderHandle = (type: 'source' | 'target', position: Position, handleId: string, offsetClass: string) => {
+        const isActive = activeConnection?.nodeId === id && activeConnection?.handleId === handleId;
+        return (
+            <Handle
+                type={type}
+                position={position}
+                id={handleId}
+                className={cn(hitAreaClass, offsetClass)}
+            >
+                <div className={cn(
+                    "w-3 h-3 bg-primary border-2 border-background rounded-full transition-all duration-200 pointer-events-none",
+                    isActive ? "opacity-100 scale-110" : "opacity-0 group-hover/handle:opacity-100 group-hover/handle:scale-150"
+                )} />
+            </Handle>
+        );
+    };
+
+    return (
+        <>
+            {renderHandle('target', Position.Top, 't', "-top-5")}
+            {renderHandle('source', Position.Bottom, 'b', "-bottom-5")}
+            {renderHandle('target', Position.Left, 'l', "-left-5")}
+            {renderHandle('source', Position.Right, 'r', "-right-5")}
+        </>
+    );
+});
+NodeHandles.displayName = 'NodeHandles';
+
 
 
 function ConversationNodeComponent(props: NodeProps) {
     const { id, data, selected } = props;
     const nodeData = data as ConversationNodeData;
-    const { theme, userName } = useSettingsStore();
+    const { theme, userName } = useSettingsStore(useShallow(s => ({ theme: s.theme, userName: s.userName })));
 
     const contentRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -47,12 +108,21 @@ function ConversationNodeComponent(props: NodeProps) {
     const [isHovered, setIsHovered] = useState(false);
     const [isEditingPersona, setIsEditingPersona] = useState(false);
 
-    const updateNode = useCanvasStore((state) => state.updateNode);
-    const setTextSelection = useCanvasStore((state) => state.setTextSelection);
-    const selectNode = useCanvasStore((state) => state.selectNode);
-    const setContextMenu = useCanvasStore((state) => state.setContextMenu);
-    const createChildNode = useCanvasStore((state) => state.createChildNode);
-    const me = useCanvasStore((state) => state.me);
+    const {
+        updateNode,
+        setTextSelection,
+        selectNode,
+        setContextMenu,
+        createChildNode,
+        me
+    } = useCanvasStore(useShallow((state) => ({
+        updateNode: state.updateNode,
+        setTextSelection: state.setTextSelection,
+        selectNode: state.selectNode,
+        setContextMenu: state.setContextMenu,
+        createChildNode: state.createChildNode,
+        me: state.me
+    })));
     const { generate } = useChat();
 
     const isUser = nodeData.role === 'user';
@@ -101,6 +171,9 @@ function ConversationNodeComponent(props: NodeProps) {
                 y: e.clientY,
                 nodeId: id,
             });
+
+            // Prevent the click handler from deselecting or interfering
+            e.stopPropagation();
         }
     }, [id, setTextSelection, setContextMenu]);
 
@@ -225,37 +298,7 @@ function ConversationNodeComponent(props: NodeProps) {
                 })()}
 
                 {/* Handles - Global Visibility on Connect & Border Straddling */}
-                {(() => {
-                    const activeConnection = useCanvasStore((state) => state.activeConnection);
-                    // Hit area: Large invisible square for easier targeting
-                    const hitAreaClass = "!w-10 !h-10 !bg-transparent !border-0 flex items-center justify-center group/handle z-50";
-
-                    const renderHandle = (type: 'source' | 'target', position: Position, handleId: string, offsetClass: string) => {
-                        const isActive = activeConnection?.nodeId === id && activeConnection?.handleId === handleId;
-                        return (
-                            <Handle
-                                type={type}
-                                position={position}
-                                id={handleId}
-                                className={cn(hitAreaClass, offsetClass)}
-                            >
-                                <div className={cn(
-                                    "w-3 h-3 bg-primary border-2 border-background rounded-full transition-all duration-200 pointer-events-none",
-                                    isActive ? "opacity-100 scale-110" : "opacity-0 group-hover/handle:opacity-100 group-hover/handle:scale-150"
-                                )} />
-                            </Handle>
-                        );
-                    };
-
-                    return (
-                        <>
-                            {renderHandle('target', Position.Top, 't', "-top-5")}
-                            {renderHandle('source', Position.Bottom, 'b', "-bottom-5")}
-                            {renderHandle('target', Position.Left, 'l', "-left-5")}
-                            {renderHandle('source', Position.Right, 'r', "-right-5")}
-                        </>
-                    );
-                })()}
+                <NodeHandles id={id} />
             </div>
         );
     }
@@ -373,7 +416,7 @@ function ConversationNodeComponent(props: NodeProps) {
                             "w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed px-6 pb-8",
                             nodeData.branchContext ? "pt-5" : "pt-12" // Add top padding if no branch context to clear icon
                         )}
-                        placeholder={!nodeData.parentId ? "Welcome to Numi ! Type your idea or ask for help ..." : "Type your message here..."}
+                        placeholder={!nodeData.parentId ? "Welcome to Numi! 🌸 Type your idea, or drag & drop files (images/PDFs) to start. I'm here to help!" : "Type your message here..."}
                     />
                 ) : (
 
@@ -399,33 +442,12 @@ function ConversationNodeComponent(props: NodeProps) {
                     >
                         {
                             nodeData.content ? (
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeRaw]}
-                                    components={{
-                                        p: ({ node, ...props }) => <p {...props} className="mb-4 last:mb-0" />,
-                                    }}
-                                >
-                                    {(() => {
-                                        let content = nodeData.content;
-                                        const branchedTexts = ((nodeData as any).branchedTexts as string[]) || [];
-
-                                        // Sort by length descending to avoid partial matches
-                                        const sortedBranches = [...new Set(branchedTexts)].sort((a, b) => b.length - a.length);
-
-                                        sortedBranches.forEach(branch => {
-                                            if (!branch || typeof branch !== 'string' || !branch.trim()) return;
-                                            // Escaping regex special characters
-                                            const escaped = branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                            // Use 'gi' flags for global and case-insensitive matching
-                                            const regex = new RegExp(`(${escaped})`, 'gi');
-                                            content = content.replace(regex, '<span class="branched-highlight">$1</span>');
-                                        });
-                                        return content;
-                                    })()}
-                                </ReactMarkdown>
+                                <MarkdownContent
+                                    content={nodeData.content}
+                                    branchedTexts={(nodeData as any).branchedTexts || []}
+                                />
                             ) : (
-                                isUser ? (!nodeData.parentId ? "Welcome to Numi ! Type your idea or ask for help ..." : "Click to type...") : 'Generating...'
+                                isUser ? (!nodeData.parentId ? "Welcome to Numi! 🌸 Type your idea, or drag & drop files (images/PDFs) to start. I'm here to help!" : "Click to type...") : 'Generating...'
                             )
                         }
                         {!selected && !isHovered && nodeData.hasChildren && (
@@ -526,83 +548,55 @@ function ConversationNodeComponent(props: NodeProps) {
 
 
             {/* Handles - Global Visibility on Connect & Border Straddling */}
-            {(() => {
-                const activeConnection = useCanvasStore((state) => state.activeConnection);
-                // Hit area: Large invisible square for easier targeting
-                const hitAreaClass = "!w-10 !h-10 !bg-transparent !border-0 flex items-center justify-center group/handle z-50";
+            <NodeHandles id={id} />
 
-                const renderHandle = (type: 'source' | 'target', position: Position, handleId: string, offsetClass: string) => {
-                    const isActive = activeConnection?.nodeId === id && activeConnection?.handleId === handleId;
-                    return (
-                        <Handle
-                            type={type}
-                            position={position}
-                            id={handleId}
-                            className={cn(hitAreaClass, offsetClass)}
-                        >
-                            <div className={cn(
-                                "w-3 h-3 bg-primary border-2 border-background rounded-full transition-all duration-200 pointer-events-none",
-                                isActive ? "opacity-100 scale-110" : "opacity-0 group-hover/handle:opacity-100 group-hover/handle:scale-150"
-                            )} />
-                        </Handle>
-                    );
-                };
-
-                return (
-                    <>
-                        {renderHandle('target', Position.Top, 't', "-top-5")}
-                        {renderHandle('source', Position.Bottom, 'b', "-bottom-5")}
-                        {renderHandle('target', Position.Left, 'l', "-left-5")}
-                        {renderHandle('source', Position.Right, 'r', "-right-5")}
-                    </>
-                );
-            })()}
-
-            {/* Custom Agent Editor Dialog */}
-            <Dialog open={isEditingPersona} onOpenChange={setIsEditingPersona}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Personnaliser l'Agent</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Nom de l'Agent</label>
-                            <Input
-                                value={nodeData.customPersona?.name || ''}
-                                onChange={(e) => updateNode(id, {
-                                    customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), name: e.target.value }
-                                })}
-                                placeholder="ex: Expert React"
-                            />
+            {/* Custom Agent Editor Dialog - Lazy Rendered */}
+            {isEditingPersona && (
+                <Dialog open={isEditingPersona} onOpenChange={setIsEditingPersona}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Personnaliser l'Agent</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Nom de l'Agent</label>
+                                <Input
+                                    value={nodeData.customPersona?.name || ''}
+                                    onChange={(e) => updateNode(id, {
+                                        customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), name: e.target.value }
+                                    })}
+                                    placeholder="ex: Expert React"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">But / Description</label>
+                                <Input
+                                    value={nodeData.customPersona?.description || ''}
+                                    onChange={(e) => updateNode(id, {
+                                        customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), description: e.target.value }
+                                    })}
+                                    placeholder="ex: Analyse le code et propose des optimisations"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Instructions (Prompt Système)</label>
+                                <textarea
+                                    value={nodeData.customPersona?.systemPrompt || ''}
+                                    onChange={(e) => updateNode(id, {
+                                        customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), systemPrompt: e.target.value }
+                                    })}
+                                    className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    placeholder="Indique à l'IA comment elle doit se comporter..."
+                                />
+                            </div>
                         </div>
-                        <div className="grid gap-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">But / Description</label>
-                            <Input
-                                value={nodeData.customPersona?.description || ''}
-                                onChange={(e) => updateNode(id, {
-                                    customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), description: e.target.value }
-                                })}
-                                placeholder="ex: Analyse le code et propose des optimisations"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Instructions (Prompt Système)</label>
-                            <textarea
-                                value={nodeData.customPersona?.systemPrompt || ''}
-                                onChange={(e) => updateNode(id, {
-                                    customPersona: { ...(nodeData.customPersona || { name: 'Expert', systemPrompt: '', description: '' }), systemPrompt: e.target.value }
-                                })}
-                                className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                placeholder="Indique à l'IA comment elle doit se comporter..."
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button onClick={() => setIsEditingPersona(false)}>Enregistrer</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div >
+                        <DialogFooter>
+                            <Button onClick={() => setIsEditingPersona(false)}>Enregistrer</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+        </div>
     );
 }
 
