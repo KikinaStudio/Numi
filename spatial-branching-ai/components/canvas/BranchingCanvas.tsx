@@ -29,6 +29,7 @@ import { TreeListDialog } from './TreeListDialog';
 import { SettingsDialog } from '@/components/ui/settings-dialog';
 import { UserOnboardingModal } from './UserOnboardingModal';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
+import { CollaboratorCursor } from './CollaboratorCursor';
 import {
     Tooltip,
     TooltipContent,
@@ -193,9 +194,13 @@ function Canvas() {
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (!me) return;
         const now = Date.now();
-        if (now - lastMousePosUpdate.current < 80) return; // Throttle at ~12fps for cursors
+        // Increased update rate to ~30fps (33ms) for smoother feel
+        if (now - lastMousePosUpdate.current < 30) return;
 
+        // Important: We send "Flow" coordinates (world space), not screen space
+        // This allows cursors to stay fixed relative to the content when panning
         const pos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+
         const updatedMe = { ...me, mousePos: pos };
         setMe(updatedMe);
         updateCollaborator(me.id, updatedMe);
@@ -419,6 +424,7 @@ function Canvas() {
                         className="!bg-card/80 !border !border-border !rounded-lg !shadow-lg backdrop-blur-sm"
                         nodeColor={(node) => {
                             const data = node.data as ConversationNodeData;
+                            if (data.fileUrl) return 'hsl(240 3.8% 46.1%)'; // Zinc-500 for files (Nice Gray)
                             return data?.role === 'user'
                                 ? 'hsl(217.2 91.2% 59.8%)' // blue
                                 : 'hsl(160.1 84.1% 39.4%)'; // emerald
@@ -444,6 +450,20 @@ function Canvas() {
                             </div>
                         </div>
                     )}
+
+                    {/* Live Cursors Overlay */}
+                    {/* We render check for collaborators directly using the store values */}
+                    {Object.values(collaborators)
+                        .filter(c => c.id !== me?.id && c.mousePos) // Don't show my own cursor
+                        .map(c => (
+                            <CollaboratorCursor
+                                key={c.id}
+                                x={c.mousePos!.x}
+                                y={c.mousePos!.y}
+                                name={c.name}
+                                color={c.color}
+                            />
+                        ))}
 
 
                     {/* Tree Name Panel */}

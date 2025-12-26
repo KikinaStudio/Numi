@@ -11,21 +11,23 @@ export function DiagnosticsPanel() {
     }
 
     return (
-        <div className="fixed bottom-6 left-28 z-50 pointer-events-none">
+        <div className="fixed bottom-3 left-3 z-[100] flex flex-col gap-2 pointer-events-none">
             <div className={cn(
-                "flex items-center justify-center h-6 w-6 rounded-full shadow-lg border backdrop-blur-md transition-all duration-300",
-                realtimeStatus === 'SUBSCRIBED' ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500 shadow-emerald-500/10" :
-                    realtimeStatus === 'CONNECTING' ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-500 animate-pulse" :
-                        "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse"
+                "flex items-center justify-center w-8 h-8 rounded-full shadow-md border backdrop-blur-md transition-all duration-300",
+                realtimeStatus === 'SUBSCRIBED' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" :
+                    realtimeStatus === 'CONNECTING' ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500" :
+                        "bg-red-500/10 border-red-500/20 text-red-500 animate-pulse"
             )}>
-                {realtimeStatus === 'SUBSCRIBED' ? <Wifi className="h-3 w-3" /> :
-                    realtimeStatus === 'CONNECTING' ? <Activity className="h-3 w-3 animate-spin" /> :
-                        <WifiOff className="h-3 w-3" />}
+                {realtimeStatus === 'SUBSCRIBED' ? <Wifi className="h-4 w-4" /> :
+                    realtimeStatus === 'CONNECTING' ? <Activity className="h-4 w-4 animate-spin" /> :
+                        <WifiOff className="h-4 w-4" />}
             </div>
 
             {syncError && (
-                <div className="absolute bottom-full mb-2 left-0 bg-red-500/90 text-white text-[10px] font-bold px-2 py-1 rounded shadow-xl whitespace-nowrap">
-                    {syncError}
+                <div className="bg-red-950/90 text-red-200 text-[10px] font-mono p-2 rounded-lg max-w-[200px] break-words shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
+                    <div className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> Sync Error
+                    </div>
                 </div>
             )}
         </div>

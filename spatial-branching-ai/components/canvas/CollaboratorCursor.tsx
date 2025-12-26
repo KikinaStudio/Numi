@@ -1,31 +1,27 @@
-'use client';
-
 import { MousePointer2 } from 'lucide-react';
 import { memo } from 'react';
 
 interface CollaboratorCursorProps {
-    name: string;
-    color: string;
     x: number;
     y: number;
+    name: string;
+    color: string;
 }
 
-const CollaboratorCursor = memo(({ name, color, x, y }: CollaboratorCursorProps) => {
+export const CollaboratorCursor = memo(({ x, y, name, color }: CollaboratorCursorProps) => {
     return (
         <div
-            className="absolute pointer-events-none z-[9999] transition-all duration-75 ease-out"
+            className="absolute top-0 left-0 pointer-events-none z-[1000] will-change-transform transition-transform duration-100 ease-linear"
             style={{
-                left: x,
-                top: y,
-                color: color,
+                transform: `translate(${x}px, ${y}px)`,
             }}
         >
             <MousePointer2
-                className="h-5 w-5 drop-shadow-md"
-                style={{ fill: color }}
+                className="h-5 w-5 fill-current text-white drop-shadow-md"
+                style={{ color: color }}
             />
             <div
-                className="ml-3 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-lg whitespace-nowrap backdrop-blur-sm border border-white/20"
+                className="absolute left-4 top-4 px-2 py-1 rounded-full text-[10px] font-bold text-white whitespace-nowrap shadow-md"
                 style={{ backgroundColor: color }}
             >
                 {name}
@@ -35,5 +31,3 @@ const CollaboratorCursor = memo(({ name, color, x, y }: CollaboratorCursorProps)
 });
 
 CollaboratorCursor.displayName = 'CollaboratorCursor';
-
-export default CollaboratorCursor;
