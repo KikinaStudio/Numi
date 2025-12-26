@@ -144,16 +144,13 @@ export function useChat(options: UseChatOptions = {}) {
 
         // Loop again to check if we now have images (ancestor OR child)
         const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
-        // Determine the best model for this request
-        let targetModel = activeModel;
-        if (hasImages) {
-            const modelDef = MODELS.find(m => m.id === activeModel);
-            // If model is unknown (not in list) or explicitly not vision capable, switch to fallback
-            if (!modelDef || !modelDef.vision) {
-                console.log(`[Vision] Model ${activeModel} does not support vision. Switching to fallback.`);
-                targetModel = 'nvidia/nemotron-nano-12b-v2-vl:free';
-            }
-        }
+        // Determine the best model for this request (Strict Dual Strategy)
+        const targetModel = hasImages
+            ? 'nvidia/nemotron-nano-12b-v2-vl:free'
+            : 'xiaomi/mimo-v2-flash:free';
+
+        const targetProvider = 'openrouter'; // Both are on OpenRouter for this strategy
+        const targetApiKey = apiKeys.openrouter;
 
         // INJECT GLOBAL IDENTITY & PERSONA
         // We look for the persona settings on the node being generated
@@ -206,8 +203,8 @@ STYLE: Keep it short and to the point.`;
                 body: JSON.stringify({
                     messages: validMessages,
                     model: targetModel,
-                    apiKey,
-                    provider,
+                    apiKey: targetApiKey,
+                    provider: targetProvider,
                     temperature,
                     stream: true,
                 }),
@@ -279,10 +276,10 @@ STYLE: Keep it short and to the point.`;
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     messages: [{ role: 'user', content: namingPrompt }],
-                                    model: 'mistralai/mistral-nemo', // Requested by user (Xiaomi Mimo v2 equivalent)
+                                    model: 'xiaomi/mimo-v2-flash:free',
                                     apiKey: apiKeys.openrouter,
                                     provider: 'openrouter',
-                                    temperature: 0.3, // Low temp for precise formatting
+                                    temperature: 0.3,
                                     stream: false,
                                 }),
                             });
