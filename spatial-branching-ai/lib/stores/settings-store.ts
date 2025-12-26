@@ -11,8 +11,12 @@ export interface ApiKeys {
 export type PricingProvider = 'openai' | 'anthropic' | 'google' | 'openrouter';
 
 export const MODELS = [
-    { id: 'xiaomi/mimo-v2-flash:free', name: 'Xiaomi MiMo V2 (Text)', provider: 'openrouter', vision: false },
-    { id: 'nvidia/nemotron-nano-12b-v2-vl:free', name: 'Nemotron Vision (Files)', provider: 'openrouter', vision: true },
+    { id: 'xiaomi/mimo-v2-flash:free', name: 'Xiaomi MiMo V2 (Text - Free)', provider: 'openrouter', vision: false },
+    { id: 'nvidia/nemotron-nano-12b-v2-vl:free', name: 'Nemotron Vision (Files - Free)', provider: 'openrouter', vision: true },
+    { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'openai', vision: true },
+    { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'anthropic', vision: true },
+    { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5', provider: 'google', vision: true },
+    { id: 'meta-llama/llama-3.1-405b-instruct', name: 'Llama 3.1 405B', provider: 'openrouter', vision: false },
 ];
 
 export interface SettingsState {
