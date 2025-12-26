@@ -151,15 +151,18 @@ function ConversationNodeComponent(props: NodeProps) {
                 onMouseLeave={() => setIsHovered(false)}
                 className={cn(
                     'relative group transition-all duration-300 ease-in-out',
-                    'shadow-lg hover:shadow-2xl',
-                    selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+                    selected && 'z-10',
                     (isHovered || selected) && 'scale-[1.01]'
                 )}
             >
                 <img
                     src={nodeData.fileUrl}
                     alt={nodeData.fileName}
-                    className="rounded-xl border border-border/50 max-w-[300px] max-h-[400px] object-cover bg-black/5 dark:bg-white/5"
+                    className={cn(
+                        "rounded-xl border transition-all duration-300",
+                        "max-w-[300px] max-h-[400px] object-cover bg-black/5 dark:bg-white/5",
+                        selected ? "border-primary shadow-2xl ring-4 ring-primary/10" : "border-border/50 shadow-lg group-hover:shadow-xl group-hover:border-primary/30"
+                    )}
                 />
 
                 {/* Minimalist Handles (Only show on hover/select) */}
