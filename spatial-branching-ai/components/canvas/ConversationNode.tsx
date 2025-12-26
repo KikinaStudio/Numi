@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -18,6 +18,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
     Dialog,
     DialogContent,
@@ -161,6 +167,37 @@ function ConversationNodeComponent(props: NodeProps) {
                     alt={nodeData.fileName}
                     className="rounded-xl border border-border/50 max-w-[300px] max-h-[400px] object-cover bg-black/5 dark:bg-white/5"
                 />
+
+                {/* Media Type Badge (PDF & Images) */}
+                {(() => {
+                    const isPdf = nodeData.mimeType === 'application/pdf';
+                    const isImage = nodeData.mimeType?.startsWith('image/');
+
+                    if (!isPdf && !isImage) return null;
+
+                    // Determine label
+                    let label = 'FILE';
+                    if (isPdf) label = 'PDF';
+                    else if (nodeData.fileName) {
+                        const ext = nodeData.fileName.split('.').pop();
+                        if (ext) label = ext.toUpperCase();
+                    }
+
+                    const BadgeIcon = isPdf ? FileText : ImageIcon;
+
+                    return (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="absolute top-3 right-3 bg-primary text-primary-foreground p-2 rounded-lg shadow-md backdrop-blur-md z-10 flex items-center justify-center border border-white/10 transition-transform hover:scale-105 cursor-help">
+                                    <BadgeIcon className="h-4 w-4" />
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="bg-primary text-primary-foreground border-white/10 font-bold">
+                                {label}
+                            </TooltipContent>
+                        </Tooltip>
+                    );
+                })()}
 
                 {/* Minimalist Handles (Only show on hover/select) */}
                 <Handle

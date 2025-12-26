@@ -53,52 +53,94 @@ export function useChat(options: UseChatOptions = {}) {
         const context = getConversationContext(nodeId) as any[];
 
         // Filter out empty messages and ensure proper format
+        // Limit total images to avoid 400 Bad Request (Max 10 images)
+        const MAX_IMAGES = 10;
+        let imageCount = 0;
+        const seenImages = new Set<string>();
+
+        // Filter out empty messages and ensure proper format
         let validMessages = context
-            .filter(m => (m.content && m.content.trim().length > 0) || m.fileUrl)
+            .reverse() // Process from newest to oldest to prioritize recent images
             .map((m) => {
                 // Find image children for this specific history node ID
                 const mChildEdges = edges.filter(e => e.source === m.id);
                 const mChildImages = mChildEdges
                     .map(e => nodes.find(n => n.id === e.target))
-                    .filter(n => n && n.data.fileUrl);
+                    .filter(n => n && (n.data.fileUrl || n.data.pdfPages));
 
-                // Check if it's an image node itself (ancestor)
-                const isImageNode = !!m.fileUrl;
+                const content: any[] = [];
+                let hasVisualContent = false;
 
-                if (isImageNode || mChildImages.length > 0) {
-                    const content: any[] = [];
+                // 1. Add Attached Children Images (High Priority)
+                mChildImages.forEach(child => {
+                    if (!child) return;
 
-                    if (m.content) {
-                        content.push({ type: "text", text: m.content });
-                    }
-
-                    // Add ancestor image if present
-                    if (isImageNode) {
-                        content.push({ type: "image_url", image_url: { url: m.fileUrl || "" } });
-                    }
-
-                    // Add attached child images
-                    mChildImages.forEach(child => {
-                        if (child && child.data.fileUrl) {
+                    if (child.data.pdfPages && child.data.pdfPages.length > 0) {
+                        child.data.pdfPages.forEach(pageUrl => {
+                            if (imageCount < MAX_IMAGES && !seenImages.has(pageUrl)) {
+                                content.push({ type: "image_url", image_url: { url: pageUrl } });
+                                seenImages.add(pageUrl);
+                                imageCount++;
+                                hasVisualContent = true;
+                            }
+                        });
+                    } else if (child.data.fileUrl) {
+                        if (imageCount < MAX_IMAGES && !seenImages.has(child.data.fileUrl)) {
                             content.push({ type: "image_url", image_url: { url: child.data.fileUrl } });
+                            seenImages.add(child.data.fileUrl);
+                            imageCount++;
+                            hasVisualContent = true;
                         }
-                    });
-
-                    // Avoid empty content if it's just an attachment with no text and no self-url
-                    if (content.length === 0) {
-                        content.push({ type: "text", text: "Image Attachment" });
                     }
+                });
 
-                    return {
-                        role: m.role as 'user' | 'assistant' | 'system',
-                        content: content
-                    };
+                // 2. Add Node's Own Image (Ancestor)
+                if (m.fileUrl || m.pdfPages) {
+                    if (m.pdfPages && m.pdfPages.length > 0) {
+                        m.pdfPages.forEach((pageUrl: string) => {
+                            if (imageCount < MAX_IMAGES && !seenImages.has(pageUrl)) {
+                                content.push({ type: "image_url", image_url: { url: pageUrl } });
+                                seenImages.add(pageUrl);
+                                imageCount++;
+                                hasVisualContent = true;
+                            }
+                        });
+                    } else if (m.fileUrl) {
+                        if (imageCount < MAX_IMAGES && !seenImages.has(m.fileUrl)) {
+                            content.push({ type: "image_url", image_url: { url: m.fileUrl } });
+                            seenImages.add(m.fileUrl);
+                            imageCount++;
+                            hasVisualContent = true;
+                        }
+                    }
                 }
+
+                // 3. Add Text content always
+                if (m.content) {
+                    content.push({ type: "text", text: m.content });
+                } else if (hasVisualContent && content.length > 0) {
+                    content.push({ type: "text", text: "Image Attachment" });
+                }
+
+                // If no content at all, skip (filter later)
+                if (content.length === 0) return null;
+
+                // Reverse content order within message so text comes first? 
+                // APIs usually handle array order. Let's keep images first or last?
+                // Usually text first is better for "Here is an image: [img]"
+                // But we pushed images first. Let's sort text to top if present.
+                const textPart = content.find(c => c.type === 'text');
+                const imageParts = content.filter(c => c.type === 'image_url');
+
+                const finalContent = textPart ? [textPart, ...imageParts] : imageParts;
+
                 return {
                     role: m.role as 'user' | 'assistant' | 'system',
-                    content: m.content,
+                    content: finalContent
                 };
-            });
+            })
+            .filter(m => m !== null)
+            .reverse(); // Restore chronological order
 
         // Loop again to check if we now have images (ancestor OR child)
         const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
@@ -134,7 +176,7 @@ YOUR NEW PERSONA: ${systemPrompt}`;
 
                 // Prepend system prompt at the VERY beginning
                 validMessages = [
-                    { role: 'system', content: strictPrompt },
+                    { role: 'system', content: strictPrompt } as any,
                     ...validMessages
                 ];
             }

@@ -22,6 +22,8 @@ export interface ConversationNodeData extends Record<string, unknown> {
     fileUrl?: string; // For images/files
     fileName?: string;
     mimeType?: string;
+    pdfUrl?: string; // Original PDF URL
+    pdfPages?: string[]; // Array of image URLs for each page
     modelConfig?: {
         model?: string;
         temperature?: number;
@@ -285,40 +287,74 @@ export const useCanvasStore = create<CanvasState>()(
                 return id;
             },
 
-            createChildNode: (parentId, position, branchContext) => {
+            createChildNode: (parentId, position, branchContext) => { // position arg is now optional fallback
                 const id = generateId();
                 const parent = get().nodes.find((n) => n.id === parentId);
-
-                // Determine role based on parent
                 const role: 'user' | 'assistant' = parent?.data.role === 'user' ? 'assistant' : 'user';
+
+                // SMART PLACEMENT LOGIC
+                let finalPosition = position;
+
+                // Find all existing children of this parent
+                const { edges, nodes } = get();
+                const childEdges = edges.filter(e => e.source === parentId);
+                const childNodes = childEdges
+                    .map(e => nodes.find(n => n.id === e.target))
+                    .filter((n): n is ConversationNode => !!n)
+                    // Sort by X position to find the right-most child
+                    .sort((a, b) => a.position.x - b.position.x);
+
+                if (childNodes.length > 0) {
+                    const lastChild = childNodes[childNodes.length - 1];
+                    // Place to the right of the last child + padding
+                    // Assuming a standard node width of approx 400px + some gap
+                    finalPosition = {
+                        x: lastChild.position.x + 450,
+                        y: lastChild.position.y // Keep same Y level
+                    };
+                } else if (!finalPosition && parent) {
+                    // First child: Place directly below parent
+                    finalPosition = {
+                        x: parent.position.x,
+                        y: parent.position.y + 300 // Vertical gap
+                    };
+                }
+
+                // Fallback if something fails
+                if (!finalPosition) finalPosition = { x: 0, y: 0 };
 
                 const newNode: ConversationNode = {
                     id,
                     type: 'conversation',
-                    position,
+                    position: finalPosition,
                     data: {
                         role,
-                        content: '',
+                        content: '', // Start empty
+                        authorName: get().me?.name || (role === 'user' ? 'User' : 'Assistant'),
                         branchContext,
-                        isGenerating: role === 'assistant',
+                        parentId, // Track parent for easier logic
+                        isGenerating: role === 'assistant', // Assistant nodes start generating
+                        // Restore Persona Inheritance
                         selectedPersonaId: parent?.data.selectedPersonaId,
                         customPersona: parent?.data.customPersona,
-                        authorName: role === 'user' ? (get().me?.name || 'User') : undefined,
                     },
                 };
 
-                const newEdge: Edge = {
-                    id: `edge-${parentId}-${id}`,
-                    source: parentId,
-                    target: id,
-                    type: 'floating',
-                    animated: true,
-                    style: { stroke: '#94a3b8', strokeWidth: 2 }, // slate-400
-                };
-
                 set((state) => {
+                    // Update parent to show it has children
+                    const p = state.nodes.find(n => n.id === parentId);
+                    if (p) {
+                        p.data = { ...p.data, hasChildren: true };
+                    }
+
                     state.nodes.push(newNode);
-                    state.edges.push(newEdge);
+                    state.edges.push({
+                        id: `edge-${parentId}-${id}`,
+                        source: parentId,
+                        target: id,
+                        type: 'floating',
+                        animated: true,
+                    });
                 });
 
                 return id;

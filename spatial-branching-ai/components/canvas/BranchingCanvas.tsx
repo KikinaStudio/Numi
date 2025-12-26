@@ -30,6 +30,7 @@ import { SettingsDialog } from '@/components/ui/settings-dialog';
 import { UserOnboardingModal } from './UserOnboardingModal';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { CollaboratorCursor } from './CollaboratorCursor';
+import { convertPdfToImages } from '@/lib/utils/pdf-processor';
 import {
     Tooltip,
     TooltipContent,
@@ -327,19 +328,85 @@ function Canvas() {
         const file = event.dataTransfer.files[0];
         if (!file) return;
 
-        // Basic validation
-        if (!file.type.startsWith('image/')) {
-            alert('Only images are supported for now.');
-            return;
-        }
-
         if (!supabase) {
             alert('Supabase client not initialized. Check your environment variables.');
             return;
         }
 
         try {
-            // Upload to Supabase
+            // Check file type
+            const isImage = file.type.startsWith('image/');
+            const isPdf = file.type === 'application/pdf';
+
+            if (!isImage && !isPdf) {
+                // If it's not a recognized MIME type, strict fail, 
+                // but checking "file.name" extension as fallback might be safer if browser issues occur
+                if (!file.name.toLowerCase().endsWith('.pdf') && !file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                    alert('Only images and PDFs are supported.');
+                    return;
+                }
+            }
+
+            const position = screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+
+            // Handle PDF
+            if (isPdf) {
+                // 1. Convert PDF to images
+                // Note: We might need to handle loading state here as PDF conversion takes time
+                const pageImages = await convertPdfToImages(file);
+                if (pageImages.length === 0) throw new Error("Could not extract pages from PDF");
+
+                // 2. Upload Original PDF
+                const pdfName = `pdfs/${Math.random().toString(36).substring(7)}_${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+                const { error: pdfUploadError } = await supabase.storage
+                    .from('files')
+                    .upload(pdfName, file);
+
+                if (pdfUploadError) throw pdfUploadError;
+
+                const { data: { publicUrl: pdfUrl } } = supabase.storage
+                    .from('files')
+                    .getPublicUrl(pdfName);
+
+                // 3. Upload Page Images
+                const pageUrls: string[] = [];
+                for (let i = 0; i < pageImages.length; i++) {
+                    const pageImg = pageImages[i];
+                    const pageName = `pages/${Math.random().toString(36).substring(7)}_${Date.now()}_p${i + 1}.jpg`;
+
+                    const { error: pageUploadError } = await supabase.storage
+                        .from('files')
+                        .upload(pageName, pageImg.blob);
+
+                    if (pageUploadError) throw pageUploadError;
+
+                    const { data: { publicUrl: pageUrl } } = supabase.storage
+                        .from('files')
+                        .getPublicUrl(pageName);
+
+                    pageUrls.push(pageUrl);
+                }
+
+                // 4. Create Node (Previewing Page 1)
+                const nodeId = useCanvasStore.getState().createRootNode(position, '');
+                useCanvasStore.getState().updateNode(nodeId, {
+                    fileUrl: pageUrls[0], // Show first page as preview
+                    fileName: file.name,
+                    mimeType: file.type,
+                    role: 'user',
+                    // Store extra metadata for PDF
+                    // @ts-ignore - We'll add this to the type definition later
+                    pdfUrl: pdfUrl,
+                    pdfPages: pageUrls
+                });
+
+                return;
+            }
+
+            // Handle Image
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random().toString(36).substring(7)}_${Date.now()}.${fileExt}`;
             const filePath = `${treeId || 'temp'}/${fileName}`;
@@ -356,11 +423,6 @@ function Canvas() {
                 .getPublicUrl(filePath);
 
             // Create Node
-            const position = screenToFlowPosition({
-                x: event.clientX,
-                y: event.clientY,
-            });
-
             const nodeId = useCanvasStore.getState().createRootNode(position, '');
             useCanvasStore.getState().updateNode(nodeId, {
                 fileUrl: publicUrl,
@@ -470,7 +532,7 @@ function Canvas() {
                     <Panel position="top-left" className="m-4">
                         <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
                             <div className="flex items-center gap-2 pr-3 border-r border-border">
-                                <img src="/numi-logo-v2.png" alt="Numi" className="h-6 w-auto" />
+                                <img src="/numi-tree-logo.png" alt="Numi" className="h-6 w-auto" />
                             </div>
                             <div className="relative group">
                                 <Input
