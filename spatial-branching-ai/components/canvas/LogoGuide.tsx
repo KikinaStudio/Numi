@@ -87,7 +87,7 @@ export function LogoGuide() {
                             <div>
                                 <h4 className="text-sm font-bold mb-0.5">Drag & Drop</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                                    Drop <span className="font-bold">images</span> or <span className="font-bold">PDFs</span> directly onto the canvas to analyze them with vision models.
+                                    Drop <span className="font-bold">anything</span> (video, sound, image, PDF) directly onto the canvas to analyze them with multimodal models.
                                 </p>
                             </div>
                         </div>
