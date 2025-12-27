@@ -19,12 +19,12 @@ import { useSettingsStore } from '@/lib/stores/settings-store';
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import SimpleFloatingEdge from './SimpleFloatingEdge';
+import { ReaderView } from './ReaderView';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
-import { useImageGen } from '@/lib/hooks/useImageGen';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { supabase } from '@/lib/supabase/client';
 import { TreeListDialog } from './TreeListDialog';
@@ -35,6 +35,7 @@ import { CollaboratorCursor } from './CollaboratorCursor';
 import { LogoGuide } from './LogoGuide';
 import { convertPdfToImages } from '@/lib/utils/pdf-processor';
 import { extractVideoFrames } from '@/lib/utils/video-processor';
+import { extractTextFromFile } from '@/lib/utils/file-text-extractor';
 import {
     Tooltip,
     TooltipContent,
@@ -203,8 +204,6 @@ function Canvas() {
 
     // AI Chat hook for generating responses
     const { generate } = useChat();
-    // Image Gen Hook
-    const { generateImage } = useImageGen();
 
     // Generate or load persistent identity for collaboration
     useEffect(() => {
@@ -414,11 +413,27 @@ function Canvas() {
 
         try {
             // Check file type
-            const validTypes = ['image/', 'application/pdf', 'audio/', 'video/'];
-            const isValid = validTypes.some(type => file.type.startsWith(type));
+            const validTypes = [
+                'image/',
+                'application/pdf',
+                'audio/',
+                'video/',
+                'text/',
+                '.md',
+                '.csv',
+                'application/json',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // docx
+            ];
+
+            const isValid = validTypes.some(type =>
+                file.type.startsWith(type) ||
+                file.name.toLowerCase().endsWith(type) ||
+                (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' &&
+                    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+            );
 
             if (!isValid) {
-                alert('Only images, PDFs, audio, and video files are supported');
+                alert('Supported formats: Images, PDF, Audio, Video, DOCX, CSV, MD, TXT, JSON');
                 return;
             }
 
@@ -437,6 +452,18 @@ function Canvas() {
                 const currentMB = (currentTotalSize / (1024 * 1024)).toFixed(2);
                 alert(`Storage limit exceeded (30MB per tree).\nCurrent usage: ${currentMB}MB.\nFile size: ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
                 return;
+            }
+
+
+            // Extract text content for multimodal reading (PDF, DOCX, CSV, MD, etc.)
+            let extractedText = '';
+            try {
+                extractedText = await extractTextFromFile(file);
+                if (extractedText) {
+                    console.log(`📄 Extracted ${extractedText.length} chars from ${file.name}`);
+                }
+            } catch (e) {
+                console.warn('Text extraction failed:', e);
             }
 
             const isPdf = file.type === 'application/pdf';
@@ -489,7 +516,8 @@ function Canvas() {
                     // Store extra metadata for PDF
                     // @ts-ignore - We'll add this to the type definition later
                     pdfUrl: pdfUrl,
-                    pdfPages: pageUrls
+                    pdfPages: pageUrls,
+                    fileContent: extractedText // Store extracted PDF text
                 });
 
                 return;
@@ -551,7 +579,8 @@ function Canvas() {
                 fileSize: file.size,
                 mimeType: file.type,
                 role: 'user',
-                videoFrames: frameUrls
+                videoFrames: frameUrls,
+                fileContent: extractedText // Store extracted text (DOCX, CSV, MD, etc.)
             });
 
         } catch (error: any) {
@@ -835,13 +864,6 @@ function Canvas() {
                             hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
                             selectedText={textSelection?.text}
                             onCreateBranch={handleCreateBranch}
-                            onGenerateImage={() => {
-                                const node = nodes.find(n => n.id === contextMenu.nodeId);
-                                if (node?.data.content) {
-                                    generateImage(node.data.content, contextMenu.nodeId);
-                                }
-                                setContextMenu(null);
-                            }}
                             onRegenerate={handleRegenerate}
                             onCopy={handleCopy}
                             onDelete={handleDelete}

@@ -21,6 +21,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
     isGenerating?: boolean;
     fileUrl?: string; // For images/files
     fileName?: string;
+    fileContent?: string; // Extracted text content for multimodal documents (PDF, DOCX, etc.)
     fileSize?: number; // Size in bytes
     mimeType?: string;
     pdfUrl?: string; // Original PDF URL
@@ -76,6 +77,7 @@ interface CanvasState {
     textSelection: TextSelection | null;
     isConnecting: boolean; // Global connection drag state
     activeConnection: { nodeId: string | null; handleId: string | null; handleType: string | null } | null;
+    readingNodeId: string | null; // For Reader Mode
     contextMenu: { x: number; y: number; nodeId: string } | null;
     collaborators: Record<string, Collaborator>;
     me: Collaborator | null;
@@ -108,6 +110,7 @@ interface CanvasState {
     selectNode: (id: string | null) => void;
     setIsConnecting: (isConnecting: boolean) => void;
     setActiveConnection: (connection: { nodeId: string | null; handleId: string | null; handleType: string | null } | null) => void;
+    setReadingNodeId: (id: string | null) => void;
     setTextSelection: (selection: TextSelection | null) => void;
     setContextMenu: (menu: { x: number; y: number; nodeId: string } | null) => void;
     setCollaborators: (collaborators: Record<string, Collaborator>) => void;
@@ -154,6 +157,7 @@ export const useCanvasStore = create<CanvasState>()(
             contextMenu: null,
             isConnecting: false,
             activeConnection: null,
+            readingNodeId: null,
             treeId: null,
             ownerId: null,
             treeName: '',
@@ -264,6 +268,7 @@ export const useCanvasStore = create<CanvasState>()(
             selectNode: (id) => set({ selectedNodeId: id }),
             setIsConnecting: (isConnecting: boolean) => set({ isConnecting }),
             setActiveConnection: (activeConnection) => set({ activeConnection }),
+            setReadingNodeId: (id) => set({ readingNodeId: id }),
             setTextSelection: (selection) => set({ textSelection: selection }),
             setContextMenu: (menu) => set({ contextMenu: menu }),
             setCollaborators: (collaborators) => set({ collaborators }),

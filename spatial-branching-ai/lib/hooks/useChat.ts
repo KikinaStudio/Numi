@@ -131,6 +131,14 @@ export function useChat(options: UseChatOptions = {}) {
                             hasVisualContent = true;
                         }
                     }
+
+                    // Handle Extracted Text (PDF, DOCX, CSV, etc.) for child
+                    if (child.data.fileContent) {
+                        content.push({
+                            type: "text",
+                            text: `[File Attachment: ${child.data.fileName}]\n${child.data.fileContent}\n-------------------\n`
+                        });
+                    }
                 }
 
                 // 2. Add Node's Own File (Ancestor)

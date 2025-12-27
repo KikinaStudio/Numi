@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, BookOpen } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -125,6 +125,7 @@ function ConversationNodeComponent(props: NodeProps) {
         selectNode: state.selectNode,
         setContextMenu: state.setContextMenu,
         createChildNode: state.createChildNode,
+        setReadingNodeId: state.setReadingNodeId,
         meName: state.me?.name,
         meColor: state.me?.color
     })));
@@ -427,6 +428,9 @@ function ConversationNodeComponent(props: NodeProps) {
                 (isHovered || selected) && 'ring-1 ring-primary/20',
                 nodeData.isGenerating && 'animate-pulse'
             )}
+            // Framer Motion layoutId for Reader View transition
+            // @ts-ignore - passing through to motion.div if we were using it, but here just DOM ID matching logic
+            id={`node-content-source-${id}`}
             style={isUser && effectiveColor ? {
                 borderColor: `${effectiveColor}20`, // Even more subtle color border
                 background: `linear-gradient(to bottom right, ${effectiveColor}10, ${effectiveColor}03)`, // Very faint tint
@@ -641,7 +645,20 @@ function ConversationNodeComponent(props: NodeProps) {
                 )}
             </div>
 
-            <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+            <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-50">
+                {isAssistant && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            // @ts-ignore
+                            setReadingNodeId(id);
+                        }}
+                        className="p-1.5 rounded-lg bg-card border shadow-sm hover:bg-accent transition-colors"
+                        title="Reader View"
+                    >
+                        <BookOpen className="h-3 w-3" />
+                    </button>
+                )}
                 <button
                     onClick={(e) => {
                         e.stopPropagation();

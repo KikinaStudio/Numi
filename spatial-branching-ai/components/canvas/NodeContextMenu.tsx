@@ -1,17 +1,14 @@
-'use client';
-
-import { memo, useEffect, useRef } from 'react';
-import { GitBranch, Trash2, RefreshCw, Copy, Scissors, Image as ImageIcon } from 'lucide-react';
+import { memo, useEffect, useRef, useState } from 'react';
+import { GitBranch, Trash2, RefreshCw, Copy } from 'lucide-react';
 
 interface NodeContextMenuProps {
     x: number;
     y: number;
     nodeId: string;
-    nodeRole?: string; // Add role
+    nodeRole?: string;
     hasTextSelection: boolean;
     selectedText?: string;
     onCreateBranch: () => void;
-    onGenerateImage: () => void;
     onRegenerate: () => void;
     onCopy: () => void;
     onDelete: () => void;
@@ -26,7 +23,6 @@ const NodeContextMenu = memo(({
     hasTextSelection,
     selectedText,
     onCreateBranch,
-    onGenerateImage,
     onRegenerate,
     onCopy,
     onDelete,
@@ -59,12 +55,12 @@ const NodeContextMenu = memo(({
 
     // Adjust position to stay within viewport
     const adjustedX = Math.min(x, window.innerWidth - 220);
-    const adjustedY = Math.min(y, window.innerHeight - 200);
+    const adjustedY = Math.min(y, window.innerHeight - 300); // Increased buffer for expanded menu
 
     return (
         <div
             ref={menuRef}
-            className="fixed z-50 min-w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95 slide-in-from-top-2"
+            className="fixed z-50 min-w-[220px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95 slide-in-from-top-2"
             style={{
                 left: adjustedX,
                 top: adjustedY,
@@ -88,17 +84,6 @@ const NodeContextMenu = memo(({
                 </button>
 
                 <div className="h-px bg-border my-1" />
-
-                <button
-                    onClick={() => {
-                        onGenerateImage();
-                        onClose();
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
-                >
-                    <ImageIcon className="h-4 w-4 text-purple-500" />
-                    <span>Generate Image</span>
-                </button>
 
                 {/* Other actions */}
                 {nodeRole === 'assistant' && (
