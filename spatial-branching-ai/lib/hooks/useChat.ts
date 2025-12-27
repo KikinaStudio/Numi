@@ -118,24 +118,9 @@ export function useChat(options: UseChatOptions = {}) {
                     // Handle Single Files
                     else if (child.data.fileUrl) {
                         if (isAudio) {
-                            try {
-                                const response = await fetch(child.data.fileUrl);
-                                const blob = await response.blob();
-                                const b64 = await blobToBase64(blob);
-                                // Default to mp3 if unknown, assuming Voxtral handles standard formats
-                                const format = child.data.mimeType?.split('/')[1] || 'mp3';
-                                content.push({
-                                    type: "input_audio",
-                                    input_audio: {
-                                        data: b64,
-                                        format: format === 'mpeg' ? 'mp3' : format
-                                    }
-                                });
-                                hasAudioContent = true;
-                            } catch (e) {
-                                console.error('Audio fetch failed', e);
-                                content.push({ type: "text", text: `[Audio Context (Failed to load): ${child.data.fileUrl}]` });
-                            }
+                            // Fallback to text context as API audio ingestion is unstable
+                            content.push({ type: "text", text: `[Audio File: ${child.data.fileName || 'Audio'}] (Content analysis unavailable via API. Please ask user for details.)` });
+                            hasAudioContent = true;
                         } else if (child.data.mimeType?.startsWith('video/')) {
                             content.push({ type: "text", text: `[Video Input: ${child.data.fileUrl}]` });
                             hasVideoContent = true;
@@ -174,22 +159,8 @@ export function useChat(options: UseChatOptions = {}) {
                         });
                     } else if (m.fileUrl) {
                         if (isAudio) {
-                            try {
-                                const response = await fetch(m.fileUrl);
-                                const blob = await response.blob();
-                                const b64 = await blobToBase64(blob);
-                                const format = m.mimeType?.split('/')[1] || 'mp3';
-                                content.push({
-                                    type: "input_audio",
-                                    input_audio: {
-                                        data: b64,
-                                        format: format === 'mpeg' ? 'mp3' : format
-                                    }
-                                });
-                                hasAudioContent = true;
-                            } catch (e) {
-                                content.push({ type: "text", text: `[Audio Context (Failed to load): ${m.fileUrl}]` });
-                            }
+                            content.push({ type: "text", text: `[Audio File: ${m.fileName || 'Audio'}] (Content analysis unavailable via API. Please ask user for details.)` });
+                            hasAudioContent = true;
                         } else if (isVideo) {
                             content.push({ type: "text", text: `[Video Input: ${m.fileUrl}]` });
                             hasVideoContent = true;
@@ -214,10 +185,9 @@ export function useChat(options: UseChatOptions = {}) {
 
                 const textParts = content.filter(c => c.type === 'text');
                 const imageParts = content.filter(c => c.type === 'image_url');
-                const audioParts = content.filter(c => c.type === 'input_audio'); // Keep audio distinct
 
-                // Combine: Text -> Audio -> Images
-                const finalContent = [...textParts, ...audioParts, ...imageParts];
+                // Combine text parts and push images to end
+                const finalContent = [...textParts, ...imageParts];
 
                 return {
                     role: m.role as 'user' | 'assistant' | 'system',
@@ -230,7 +200,7 @@ export function useChat(options: UseChatOptions = {}) {
         // Loop again to check if we now have specific media types
         const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
         // Check for our text-based markers
-        const hasAudio = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'input_audio'));
+        const hasAudio = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Audio File:')));
         const hasVideo = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Video Input:')));
 
         // Determine the best model for this request (Multi-modal Strategy)
@@ -238,8 +208,6 @@ export function useChat(options: UseChatOptions = {}) {
 
         if (hasVideo || hasImages) {
             targetModel = 'nvidia/nemotron-nano-12b-v2-vl:free';
-        } else if (hasAudio) {
-            targetModel = 'mistralai/voxtral-small-24b-2507';
         } else {
             targetModel = 'xiaomi/mimo-v2-flash:free';
         }
