@@ -19,6 +19,9 @@ export const ReaderView = () => {
 
     const node = readingNodeId ? nodes.find(n => n.id === readingNodeId) : null;
 
+    console.log('[ReaderView] Render. readingNodeId:', readingNodeId, 'Node found:', !!node);
+
+
     // Handle closing on Escape key
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {

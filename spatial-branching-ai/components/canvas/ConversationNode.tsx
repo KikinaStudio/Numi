@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, BookOpen } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, Maximize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -117,6 +117,7 @@ function ConversationNodeComponent(props: NodeProps) {
         selectNode,
         setContextMenu,
         createChildNode,
+        setReadingNodeId,
         meName,
         meColor
     } = useCanvasStore(useShallow((state) => ({
@@ -645,30 +646,21 @@ function ConversationNodeComponent(props: NodeProps) {
                 )}
             </div>
 
-            <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-50">
+            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-50">
                 {isAssistant && (
                     <button
                         onClick={(e) => {
+                            console.log('📖 Reader Mode triggered for:', id);
                             e.stopPropagation();
-                            // @ts-ignore
                             setReadingNodeId(id);
                         }}
-                        className="p-1.5 rounded-lg bg-card border shadow-sm hover:bg-accent transition-colors"
-                        title="Reader View"
+                        className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Reader Mode"
                     >
-                        <BookOpen className="h-3 w-3" />
+                        <Maximize2 className="h-4 w-4" />
                     </button>
                 )}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(nodeData.content);
-                    }}
-                    className="p-1.5 rounded-lg bg-card border shadow-sm hover:bg-accent transition-colors"
-                    title="Copy content"
-                >
-                    <Copy className="h-3 w-3" />
-                </button>
+                {/* Copy Button Removed per user request */}
             </div>
 
 

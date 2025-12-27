@@ -896,6 +896,7 @@ function Canvas() {
                     )
                 }
 
+                <ReaderView />
                 <TreeListDialog open={showTreeList} onOpenChange={setShowTreeList} />
                 <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
                 <UserOnboardingModal
