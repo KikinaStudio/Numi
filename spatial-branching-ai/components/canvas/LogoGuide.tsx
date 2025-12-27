@@ -7,7 +7,7 @@ import {
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { cn } from '@/lib/utils';
-import { GitBranch, Brain, Zap, Layers, Sparkles } from 'lucide-react';
+import { GitBranch, Brain, Zap, Layers, Sparkles, Users, Cloud } from 'lucide-react';
 
 export function LogoGuide() {
     const theme = useSettingsStore(s => s.theme);
@@ -42,11 +42,11 @@ export function LogoGuide() {
             >
                 <div className="space-y-6">
                     {/* Header / Logo */}
-                    <div className="mb-2">
+                    <div className="mb-6">
                         <img
                             src={isDark ? "/assets/logo/numi-text-black.png" : "/assets/logo/numi-text-white.png"}
                             alt="Numi Logo"
-                            className="h-8 w-auto"
+                            className="h-10 w-auto"
                         />
                     </div>
 
@@ -54,10 +54,10 @@ export function LogoGuide() {
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
                             <Sparkles className={cn("h-4 w-4", isDark ? "text-purple-600" : "text-yellow-400")} />
-                            <span className="text-xs font-bold uppercase tracking-widest opacity-70">Philosophy</span>
+                            <span className="text-xs font-bold uppercase tracking-widest opacity-70">Branch thinking workspace</span>
                         </div>
                         <h3 className={cn("text-lg font-bold leading-tight", isDark ? "text-zinc-900" : "text-white")}>
-                            Designed for minds that race.
+                            Save the Trees.
                         </h3>
                         <p className={cn("text-sm leading-relaxed", isDark ? "text-zinc-600" : "text-zinc-400")}>
                             Think in branches, create freely. Numi uses spatial design to match the speed and non-linear nature of your thoughts.
@@ -100,6 +100,30 @@ export function LogoGuide() {
                                 <h4 className="text-sm font-bold mb-0.5">Personas</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
                                     Assign specific roles (Expert, Creative, Critic) to different nodes for varied perspectives.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 items-start">
+                            <div className={cn("p-2 rounded-lg shrink-0", isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100")}>
+                                <Users className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold mb-0.5">Real-time Collab</h4>
+                                <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
+                                    Invite friends to collaborate on your tree in real-time.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 items-start">
+                            <div className={cn("p-2 rounded-lg shrink-0", isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100")}>
+                                <Cloud className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold mb-0.5">Save & Sync</h4>
+                                <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
+                                    Save your trees to the cloud and access them anytime.
                                 </p>
                             </div>
                         </div>
