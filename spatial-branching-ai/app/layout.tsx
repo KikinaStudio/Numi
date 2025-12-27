@@ -14,8 +14,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Numi⎜Collaborative tree thinking",
-  description: "Visualize and branch your AI conversations in an infinite canvas. Create non-linear conversation trees with deep branching from text selections.",
+  metadataBase: new URL('https://numitree.com'),
+  title: {
+    default: 'Numi',
+    template: '%s | Numi',
+  },
+  description: 'An infinite-canvas spatial AI workspace for brainstorming and collaboration.',
+  openGraph: {
+    title: 'Numi',
+    description: 'An infinite-canvas spatial AI workspace.',
+    url: 'https://numitree.com',
+    siteName: 'Numi',
+    locale: 'en_US',
+    type: 'website',
+  },
   keywords: ["AI", "conversations", "branching", "canvas", "LLM", "ChatGPT"],
   icons: {
     icon: "/icon.png",
