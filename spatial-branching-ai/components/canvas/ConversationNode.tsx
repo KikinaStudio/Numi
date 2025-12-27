@@ -2,12 +2,13 @@
 
 import { memo, useCallback, useRef, useState, useMemo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
+import { useReactFlow } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -101,9 +102,11 @@ function ConversationNodeComponent(props: NodeProps) {
     const { id, data, selected } = props;
     const nodeData = data as ConversationNodeData;
     const { theme, userName } = useSettingsStore(useShallow(s => ({ theme: s.theme, userName: s.userName })));
+    const { setCenter } = useReactFlow();
 
     const contentRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [isEditingPersona, setIsEditingPersona] = useState(false);
@@ -198,9 +201,39 @@ function ConversationNodeComponent(props: NodeProps) {
     const handleKeyDown = useCallback(async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Escape') {
             setIsEditing(false);
+            return;
         }
-        // Removed Enter-to-submit logic, simplified to just save on blur or specific action
-    }, []);
+
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const content = e.currentTarget.value;
+            updateNode(id, { content });
+            setIsEditing(false);
+
+            if (!content.trim()) return;
+
+            const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
+            if (parentNode) {
+                const newPos = {
+                    x: parentNode.position.x + 50,
+                    y: parentNode.position.y + 200
+                };
+                const childId = createChildNode(id, newPos);
+                selectNode(childId); // Switch focus to new node
+
+                // Pan to new node (Center logic: x + half_width, y + visual_offset)
+                setCenter(newPos.x + 225, newPos.y + 100, { zoom: 1, duration: 1200 });
+
+                try {
+                    await generate(childId);
+                } catch (err) {
+                    console.error("Generation failed", err);
+                }
+            }
+        }
+    }, [id, updateNode, createChildNode, generate, selectNode]);
 
     // Manual generation handler
     const handleGenerate = useCallback(async (e: React.MouseEvent) => {
@@ -211,6 +244,7 @@ function ConversationNodeComponent(props: NodeProps) {
         if (isEditing && textareaRef.current) {
             currentContent = textareaRef.current.value;
             updateNode(id, { content: currentContent });
+            setIsEditing(false); // Also close editor on button click
         }
 
         if (!isUser || !currentContent.trim()) return;
@@ -222,13 +256,18 @@ function ConversationNodeComponent(props: NodeProps) {
                 y: parentNode.position.y + 200
             };
             const childId = createChildNode(id, newPos);
+            selectNode(childId);
+
+            // Pan to new node
+            setCenter(newPos.x + 225, newPos.y + 100, { zoom: 1, duration: 1200 });
+
             try {
                 await generate(childId);
             } catch (err) {
                 console.error("Generation failed", err);
             }
         }
-    }, [id, isUser, nodeData.content, isEditing, updateNode, createChildNode, generate]);
+    }, [id, nodeData.content, isEditing, updateNode, isUser, createChildNode, generate, selectNode]);
 
     // Reply handler for Assistant nodes
     const handleReply = useCallback((e: React.MouseEvent) => {
@@ -244,8 +283,13 @@ function ConversationNodeComponent(props: NodeProps) {
         }
     }, [id, createChildNode, selectNode]);
 
-    // --- MINIMALIST IMAGE VIEW ---
+    // --- MINIMAL MEDIA VIEW (Image / Audio / Video) ---
     if (nodeData.fileUrl) {
+        const isPdf = nodeData.mimeType === 'application/pdf';
+        const isImage = nodeData.mimeType?.startsWith('image/');
+        const isAudio = nodeData.mimeType?.startsWith('audio/');
+        const isVideo = nodeData.mimeType?.startsWith('video/');
+
         return (
             <div
                 onClick={handleClick}
@@ -259,38 +303,100 @@ function ConversationNodeComponent(props: NodeProps) {
                     selected ? 'scale-[1.02] shadow-2xl ring-1 ring-primary/30' : 'hover:scale-[1.01]'
                 )}
             >
-                <img
-                    src={nodeData.fileUrl}
-                    alt={nodeData.fileName}
-                    className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
-                />
+                {/* Media Content */}
+                {isImage || isPdf ? (
+                    <img
+                        src={nodeData.fileUrl}
+                        alt={nodeData.fileName}
+                        className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
+                    />
+                ) : isAudio ? (
+                    <div className="w-[340px] bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col gap-2 p-4 pr-14 shadow-sm relative">
+                        <span className="text-xs font-semibold text-foreground/70 truncate px-1" title={nodeData.fileName}>
+                            {nodeData.fileName}
+                        </span>
+                        <audio
+                            controls
+                            src={nodeData.fileUrl}
+                            className="w-full h-8 accent-primary custom-audio-player"
+                        />
+                    </div>
+                ) : isVideo ? (
+                    <div
+                        className="relative rounded-2xl overflow-hidden border border-white/10 max-w-[320px] bg-black group/video"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsVideoModalOpen(true);
+                        }}
+                    >
+                        <video
+                            src={nodeData.fileUrl}
+                            className="w-full h-auto max-h-[400px] object-cover opacity-80 group-hover/video:opacity-100 transition-opacity"
+                            muted
+                            preload="metadata"
+                        />
+                        {/* Title Overlay */}
+                        <div className="absolute top-0 inset-x-0 p-3 bg-gradient-to-b from-black/80 to-transparent text-white/90 text-xs font-medium truncate pr-12 z-10 pointer-events-none">
+                            {nodeData.fileName}
+                        </div>
 
-                {/* Media Type Badge (PDF & Images) */}
+                        {/* Play Overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                            <div className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/20 shadow-xl group-hover/video:scale-110 transition-transform">
+                                <Play className="h-6 w-6 text-white fill-white" />
+                            </div>
+                        </div>
+
+                        {/* Fullscreen Video Modal */}
+                        <Dialog open={isVideoModalOpen} onOpenChange={setIsVideoModalOpen}>
+                            <DialogContent className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
+                                <DialogTitle className="sr-only">Video Player</DialogTitle>
+
+                                {/* Close Button - Detached & Large */}
+                                <button
+                                    onClick={() => setIsVideoModalOpen(false)}
+                                    className="absolute -top-12 -right-12 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
+                                    title="Close Video"
+                                >
+                                    <X className="h-8 w-8" />
+                                </button>
+
+                                <video
+                                    src={nodeData.fileUrl}
+                                    controls
+                                    autoPlay
+                                    className="max-w-[90vw] max-h-[80vh] rounded-lg shadow-2xl outline-none"
+                                    onClick={(e) => e.stopPropagation()} // Prevent closing when clicking video controls
+                                />
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                ) : (
+                    // Fallback
+                    <div className="p-4 bg-muted rounded-2xl border flex items-center gap-2 text-sm">
+                        <FileText className="h-4 w-4" />
+                        <span>Unsupported File</span>
+                    </div>
+                )}
+
+                {/* Media Type Badge */}
                 {(() => {
-                    const isPdf = nodeData.mimeType === 'application/pdf';
-                    const isImage = nodeData.mimeType?.startsWith('image/');
+                    let BadgeIcon = FileText;
+                    const ext = nodeData.fileName?.split('.').pop()?.toUpperCase();
+                    let label = ext || 'FILE';
 
-                    if (!isPdf && !isImage) return null;
-
-                    // Determine label
-                    let label = 'FILE';
-                    if (isPdf) label = 'PDF';
-                    else if (nodeData.fileName) {
-                        const ext = nodeData.fileName.split('.').pop();
-                        if (ext) label = ext.toUpperCase();
-                    }
-
-                    const BadgeIcon = isPdf ? FileText : ImageIcon;
+                    if (isPdf) { label = 'PDF'; BadgeIcon = FileText; }
+                    else if (isImage) { label = ext || 'IMG'; BadgeIcon = ImageIcon; }
+                    else if (isAudio) { label = ext || 'MP3'; BadgeIcon = FileAudio; }
+                    else if (isVideo) { label = ext || 'MP4'; BadgeIcon = FileVideo; }
+                    else return null;
 
                     return (
-                        <div className="absolute top-3 right-3 flex items-center gap-1 group/badge z-20">
-                            {/* The label (visible on hover) */}
-                            <div className="opacity-0 group-hover/badge:opacity-100 transition-all duration-200 bg-primary text-primary-foreground px-2 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 font-bold text-[11px] transform translate-x-2 group-hover/badge:translate-x-0 pointer-events-none whitespace-nowrap">
+                        <div className="absolute top-3 right-3 flex items-center gap-1 group/badge z-20 cursor-default">
+                            <div className="opacity-0 group-hover/badge:opacity-100 transition-all duration-200 bg-primary text-primary-foreground px-2 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 font-bold text-[11px] transform translate-x-2 group-hover/badge:translate-x-0 whitespace-nowrap">
                                 {label}
                             </div>
-
-                            {/* The Icon */}
-                            <div className="bg-primary text-primary-foreground w-8 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 transition-transform hover:scale-105 cursor-default shrink-0">
+                            <div className="bg-primary text-primary-foreground w-8 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 transition-transform hover:scale-105 shrink-0">
                                 <BadgeIcon className="h-4 w-4" />
                             </div>
                         </div>
@@ -325,8 +431,8 @@ function ConversationNodeComponent(props: NodeProps) {
                 boxShadow: isHovered || selected ? `0 12px 40px -12px ${effectiveColor}25` : undefined
             } : {}}
         >
-            {/* Invisible Top Drag Handle */}
-            <div className="absolute inset-x-0 top-0 h-10 z-10 cursor-grab active:cursor-grabbing" />
+            {/* Invisible Top Drag Handle - High Z-Index to ensure catch */}
+            <div className="absolute inset-x-0 top-0 h-12 z-30 cursor-grab active:cursor-grabbing" />
 
             {/* Draggable Handle Gradient (Assistant Only) */}
             <div className={cn(
@@ -335,7 +441,7 @@ function ConversationNodeComponent(props: NodeProps) {
             )} />
 
             {/* Floating User/Bot Icon */}
-            <div className="absolute top-2 left-2 z-20">
+            <div className="absolute top-2 left-2 z-40">
                 <TooltipProvider>
                     <Tooltip delayDuration={0}>
                         <TooltipTrigger asChild>
@@ -433,9 +539,9 @@ function ConversationNodeComponent(props: NodeProps) {
                             'prose-notion select-text cursor-text px-6 pb-8 min-h-[100px] nopan nodrag nowheel',
                             nodeData.branchContext ? "pt-5" : "pt-12", // Add top padding if no branch context to clear icon
                             !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground italic',
-                            !selected && !isHovered && nodeData.hasChildren && "max-h-[120px] overflow-hidden"
+                            !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "max-h-[120px] overflow-hidden"
                         )}
-                        style={!selected && !isHovered && nodeData.hasChildren ? {
+                        style={!selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl ? {
                             WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
                             maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
                         } : {}}

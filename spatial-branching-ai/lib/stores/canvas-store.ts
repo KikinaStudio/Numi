@@ -25,6 +25,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
     mimeType?: string;
     pdfUrl?: string; // Original PDF URL
     pdfPages?: string[]; // Array of image URLs for each page
+    videoFrames?: string[]; // Extracted keyframes for video vision
     modelConfig?: {
         model?: string;
         temperature?: number;

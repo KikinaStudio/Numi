@@ -33,6 +33,7 @@ import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { CollaboratorCursor } from './CollaboratorCursor';
 import { LogoGuide } from './LogoGuide';
 import { convertPdfToImages } from '@/lib/utils/pdf-processor';
+import { extractVideoFrames } from '@/lib/utils/video-processor';
 import {
     Tooltip,
     TooltipContent,
@@ -206,8 +207,11 @@ function Canvas() {
 
         const colors = USER_COLORS;
         const names = ['Artiste', 'Explorateur', 'Architecte', 'Penseur', 'Visionnaire', 'Guide'];
-
-        const finalId = storedId || Math.random().toString(36).substring(7);
+        // Generate a UUID for the user ID if not stored
+        const finalId = storedId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        }));
         const finalColor = storedColor || colors[Math.floor(Math.random() * colors.length)];
         const finalName = storedName || names[Math.floor(Math.random() * names.length)];
 
@@ -402,20 +406,19 @@ function Canvas() {
 
         try {
             // Check file type
-            const isImage = file.type.startsWith('image/');
-            const isPdf = file.type === 'application/pdf';
+            const validTypes = ['image/', 'application/pdf', 'audio/', 'video/'];
+            const isValid = validTypes.some(type => file.type.startsWith(type));
 
-            if (!isImage && !isPdf) {
-                if (!file.name.toLowerCase().endsWith('.pdf') && !file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-                    alert('Only images and PDFs are supported.');
-                    return;
-                }
+            if (!isValid) {
+                alert('Only images, PDFs, audio, and video files are supported');
+                return;
             }
 
             // ----------------------------------------------------------------------
-            // STORAGE QUOTA CHECK (10MB Limit)
+            // STORAGE QUOTA CHECK (30MB Limit)
             // ----------------------------------------------------------------------
-            const MAX_TREE_SIZE = 10 * 1024 * 1024; // 10 MB in bytes
+            // 30MB limit per tree
+            const MAX_TREE_SIZE = 30 * 1024 * 1024;
 
             // Calculate current total size of files in the tree
             const currentTotalSize = useCanvasStore.getState().nodes.reduce((acc, node) => {
@@ -424,9 +427,11 @@ function Canvas() {
 
             if (currentTotalSize + file.size > MAX_TREE_SIZE) {
                 const currentMB = (currentTotalSize / (1024 * 1024)).toFixed(2);
-                alert(`Storage limit exceeded (10MB per tree).\nCurrent usage: ${currentMB}MB.\nFile size: ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                alert(`Storage limit exceeded (30MB per tree).\nCurrent usage: ${currentMB}MB.\nFile size: ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
                 return;
             }
+
+            const isPdf = file.type === 'application/pdf';
 
             // Handle PDF
             if (isPdf) {
@@ -482,11 +487,13 @@ function Canvas() {
                 return;
             }
 
-            // Handle Image
+            // Handle Media (Image/Audio/Video)
+            // Handle Media (Image/Audio/Video)
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random().toString(36).substring(7)}_${Date.now()}.${fileExt}`;
             const filePath = `${treeId || 'temp'}/${fileName}`;
 
+            // 1. Upload Main File
             const { error: uploadError } = await supabase.storage
                 .from('files')
                 .upload(filePath, file);
@@ -498,14 +505,45 @@ function Canvas() {
                 .from('files')
                 .getPublicUrl(filePath);
 
+            // 2. If Video: Extract Frames
+            let frameUrls: string[] | undefined;
+            if (file.type.startsWith('video/')) {
+                try {
+                    console.log('🎞️ Extracting frames for vision analysis...');
+                    const frames = await extractVideoFrames(file);
+                    frameUrls = [];
+
+                    for (let i = 0; i < frames.length; i++) {
+                        const frameBlob = frames[i];
+                        // Use .jpg for frames
+                        const frameName = `frames/${Math.random().toString(36).substring(7)}_${Date.now()}_f${i}.jpg`;
+
+                        const { error: frameErr } = await supabase.storage
+                            .from('files')
+                            .upload(frameName, frameBlob);
+
+                        if (!frameErr) {
+                            const { data: { publicUrl: frameUrl } } = supabase.storage
+                                .from('files')
+                                .getPublicUrl(frameName);
+                            frameUrls.push(frameUrl);
+                        }
+                    }
+                    console.log(`✅ Extracted ${frameUrls.length} frames`);
+                } catch (e) {
+                    console.error('Failed to extract video frames (non-fatal):', e);
+                }
+            }
+
             // Create Node
             const nodeId = useCanvasStore.getState().createRootNode(position, '');
             useCanvasStore.getState().updateNode(nodeId, {
                 fileUrl: publicUrl,
                 fileName: file.name,
-                fileSize: file.size, // Store file size
+                fileSize: file.size,
                 mimeType: file.type,
-                role: 'user' // Files are user inputs
+                role: 'user',
+                videoFrames: frameUrls
             });
 
         } catch (error: any) {
@@ -594,6 +632,7 @@ function Canvas() {
                     proOptions={{ hideAttribution: true }}
 
                     // Interaction Settings
+                    deleteKeyCode={['Backspace', 'Delete']}
                     snapToGrid
                     snapGrid={[20, 20]}
                     panOnScroll

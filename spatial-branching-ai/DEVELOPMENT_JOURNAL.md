@@ -107,3 +107,22 @@ Numi is now a "Collaborative Alpha". It is ready to be a professional brainstorm
 
 - **Refactor**: Extracted `handleFileUpload` to power both the Drag & Drop zone AND a new explicit "Add" button in the toolbar.
 - **UX**: Added immediate visual feedback and quota checks (10MB limit).
+
+## [2025-12-27] Build 9: The Multimodal Awakening 👁️👂
+**Objective**: Enhance Numi with "senses" - Video Vision and Audio Listening.
+
+### Features
+1. **Video Vision Pipeline**:
+   - Implemented client-side keyframe extraction (Start/Mid/End).
+   - Integrated `nvidia/nemotron-nano-12b-v2-vl` via OpenRouter.
+   - Videos are now "seen" by the AI as a sequence of images.
+2. **Audio Intelligence**:
+   - Integrated `mistralai/voxtral` for audio files.
+   - Compact Audio Player UI.
+3. **Cinematic UX**:
+   - **Auto-Focus Camera**: Viewport now glides to the answer automatically.
+   - **Detached Video Player**: Fullscreen modal with "cinema" styling and improved z-indexing.
+   - **Enter-to-Submit**: Streamlined typing flow.
+
+### Technical Win
+- Solved the "AI can't watch videos" limitation by building a `video-processor.ts` utility that acts as the AI's "eyes", converting temporal media into static vision context.

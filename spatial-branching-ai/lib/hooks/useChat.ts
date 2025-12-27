@@ -62,19 +62,24 @@ export function useChat(options: UseChatOptions = {}) {
         let validMessages = context
             .reverse() // Process from newest to oldest to prioritize recent images
             .map((m) => {
-                // Find image children for this specific history node ID
+                // Find image/audio/video children for this specific history node ID
                 const mChildEdges = edges.filter(e => e.source === m.id);
-                const mChildImages = mChildEdges
+                const mChildFiles = mChildEdges
                     .map(e => nodes.find(n => n.id === e.target))
                     .filter(n => n && (n.data.fileUrl || n.data.pdfPages));
 
                 const content: any[] = [];
                 let hasVisualContent = false;
+                let hasAudioContent = false;
+                let hasVideoContent = false;
 
-                // 1. Add Attached Children Images (High Priority)
-                mChildImages.forEach(child => {
+                // 1. Add Attached Children Files
+                mChildFiles.forEach(child => {
                     if (!child) return;
 
+                    const isAudio = child.data.mimeType?.startsWith('audio/');
+
+                    // Handle PDF Pages
                     if (child.data.pdfPages && child.data.pdfPages.length > 0) {
                         child.data.pdfPages.forEach(pageUrl => {
                             if (imageCount < MAX_IMAGES && !seenImages.has(pageUrl)) {
@@ -84,8 +89,28 @@ export function useChat(options: UseChatOptions = {}) {
                                 hasVisualContent = true;
                             }
                         });
-                    } else if (child.data.fileUrl) {
-                        if (imageCount < MAX_IMAGES && !seenImages.has(child.data.fileUrl)) {
+                    }
+                    // Handle Video Frames (Vision)
+                    else if (child.data.videoFrames && child.data.videoFrames.length > 0) {
+                        content.push({ type: "text", text: "CONTEXT: The following images are keyframes extracted from the video. Please treat them as the video's visual content." });
+                        child.data.videoFrames.forEach(frameUrl => {
+                            if (imageCount < MAX_IMAGES && !seenImages.has(frameUrl)) {
+                                content.push({ type: "image_url", image_url: { url: frameUrl } });
+                                seenImages.add(frameUrl);
+                                imageCount++;
+                                hasVideoContent = true; // Still mark as video for model selection
+                            }
+                        });
+                    }
+                    // Handle Single Files
+                    else if (child.data.fileUrl) {
+                        if (isAudio) {
+                            content.push({ type: "text", text: `[Audio Context: ${child.data.fileUrl}]` });
+                            hasAudioContent = true;
+                        } else if (child.data.mimeType?.startsWith('video/')) {
+                            content.push({ type: "text", text: `[Video Input: ${child.data.fileUrl}]` });
+                            hasVideoContent = true;
+                        } else if (imageCount < MAX_IMAGES && !seenImages.has(child.data.fileUrl)) {
                             content.push({ type: "image_url", image_url: { url: child.data.fileUrl } });
                             seenImages.add(child.data.fileUrl);
                             imageCount++;
@@ -94,8 +119,11 @@ export function useChat(options: UseChatOptions = {}) {
                     }
                 });
 
-                // 2. Add Node's Own Image (Ancestor)
-                if (m.fileUrl || m.pdfPages) {
+                // 2. Add Node's Own File (Ancestor)
+                if (m.fileUrl || m.pdfPages || m.videoFrames) {
+                    const isAudio = m.mimeType?.startsWith('audio/');
+                    const isVideo = m.mimeType?.startsWith('video/');
+
                     if (m.pdfPages && m.pdfPages.length > 0) {
                         m.pdfPages.forEach((pageUrl: string) => {
                             if (imageCount < MAX_IMAGES && !seenImages.has(pageUrl)) {
@@ -105,8 +133,24 @@ export function useChat(options: UseChatOptions = {}) {
                                 hasVisualContent = true;
                             }
                         });
+                    } else if (m.videoFrames && m.videoFrames.length > 0) {
+                        content.push({ type: "text", text: "CONTEXT: The following images are keyframes extracted from the video. Please treat them as the video's visual content." });
+                        m.videoFrames.forEach((frameUrl: string) => {
+                            if (imageCount < MAX_IMAGES && !seenImages.has(frameUrl)) {
+                                content.push({ type: "image_url", image_url: { url: frameUrl } });
+                                seenImages.add(frameUrl);
+                                imageCount++;
+                                hasVideoContent = true;
+                            }
+                        });
                     } else if (m.fileUrl) {
-                        if (imageCount < MAX_IMAGES && !seenImages.has(m.fileUrl)) {
+                        if (isAudio) {
+                            content.push({ type: "text", text: `[Audio Context: ${m.fileUrl}]` });
+                            hasAudioContent = true;
+                        } else if (isVideo) {
+                            content.push({ type: "text", text: `[Video Input: ${m.fileUrl}]` });
+                            hasVideoContent = true;
+                        } else if (imageCount < MAX_IMAGES && !seenImages.has(m.fileUrl)) {
                             content.push({ type: "image_url", image_url: { url: m.fileUrl } });
                             seenImages.add(m.fileUrl);
                             imageCount++;
@@ -118,21 +162,18 @@ export function useChat(options: UseChatOptions = {}) {
                 // 3. Add Text content always
                 if (m.content) {
                     content.push({ type: "text", text: m.content });
-                } else if (hasVisualContent && content.length > 0) {
-                    content.push({ type: "text", text: "Image Attachment" });
+                } else if ((hasVisualContent || hasAudioContent || hasVideoContent) && content.length > 0) {
+                    content.push({ type: "text", text: "Media Attachment" });
                 }
 
                 // If no content at all, skip (filter later)
                 if (content.length === 0) return null;
 
-                // Reverse content order within message so text comes first? 
-                // APIs usually handle array order. Let's keep images first or last?
-                // Usually text first is better for "Here is an image: [img]"
-                // But we pushed images first. Let's sort text to top if present.
-                const textPart = content.find(c => c.type === 'text');
+                const textParts = content.filter(c => c.type === 'text');
                 const imageParts = content.filter(c => c.type === 'image_url');
 
-                const finalContent = textPart ? [textPart, ...imageParts] : imageParts;
+                // Combine text parts and push images to end
+                const finalContent = [...textParts, ...imageParts];
 
                 return {
                     role: m.role as 'user' | 'assistant' | 'system',
@@ -142,14 +183,24 @@ export function useChat(options: UseChatOptions = {}) {
             .filter(m => m !== null)
             .reverse(); // Restore chronological order
 
-        // Loop again to check if we now have images (ancestor OR child)
+        // Loop again to check if we now have specific media types
         const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
-        // Determine the best model for this request (Strict Dual Strategy)
-        const targetModel = hasImages
-            ? 'nvidia/nemotron-nano-12b-v2-vl:free'
-            : 'xiaomi/mimo-v2-flash:free';
+        // Check for our text-based markers
+        const hasAudio = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Audio Context:')));
+        const hasVideo = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Video Input:')));
 
-        const targetProvider = 'openrouter'; // Both are on OpenRouter for this strategy
+        // Determine the best model for this request (Multi-modal Strategy)
+        let targetModel = activeModel; // Default
+
+        if (hasVideo || hasImages) {
+            targetModel = 'nvidia/nemotron-nano-12b-v2-vl:free';
+        } else if (hasAudio) {
+            targetModel = 'mistralai/voxtral-small-24b-2507';
+        } else {
+            targetModel = 'xiaomi/mimo-v2-flash:free';
+        }
+
+        const targetProvider = 'openrouter';
         const targetApiKey = apiKeys.openrouter;
 
         // INJECT GLOBAL IDENTITY & PERSONA

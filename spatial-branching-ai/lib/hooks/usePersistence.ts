@@ -173,7 +173,15 @@ export function usePersistence() {
             }
 
             // 2. Upsert Nodes
-            const dbNodes: DbNode[] = currentNodes.map(node => ({
+            const validNodes = currentNodes.filter(node => {
+                if (!isUUID(node.id)) {
+                    console.warn(`[Persistence] Skipping node with invalid UUID: ${node.id}`);
+                    return false;
+                }
+                return true;
+            });
+
+            const dbNodes: DbNode[] = validNodes.map(node => ({
                 id: node.id,
                 tree_id: currentTreeId!,
                 parent_id: null,

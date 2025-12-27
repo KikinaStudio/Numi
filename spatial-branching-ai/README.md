@@ -18,9 +18,15 @@ Key objectives include:
 ### 🌌 Spatial AI Workspace
 
 - **Infinite Canvas**: A boundless environment to map out complex thoughts using [React Flow](https://reactflow.dev/).
-- **Branching Conversations**: Select any text in a bubble to branch off a new discussion path, maintaining context.
-- **Auto-Naming**: Trees are automatically named based on conversation content using a specialized AI agent.
-- **Organized Trees**: Folders and search to manage your "Saved Trees" effectively.
+- **🧠 Multimodal Intelligence**:
+  - **Video Vision**: Drag & drop videos (.mp4, .mov). Numi extracts keyframes and uses **NVIDIA Nemotron** to "see" and analyze the content.
+  - **Audio Listening**: Upload audio files (.mp3, .wav). Numi uses **Mistral Voxtral** to listen and transcribe/respond.
+  - **Images & PDFs**: Full support for visual analysis and document reading.
+- **⚡ Spatial Canvas**: Infinite whiteboard with "Google Maps" style navigation. Drag, drop, branch, and organize thoughts spatially.
+- **🎥 Cinematic UX**:
+  - Auto-focus camera system that glides to new answers.
+  - Detached, immersive video player.
+  - Glassmorphic design with dynamic theming.
 
 ### 🧠 Intelligent Agents
 
