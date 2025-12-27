@@ -4,6 +4,19 @@ import { useCanvasStore } from '@/lib/stores/canvas-store';
 import { useSettingsStore, MODELS } from '@/lib/stores/settings-store';
 import { PERSONAS } from '@/lib/config/personas';
 
+// Helper for Audio B64
+const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+};
+
 interface UseChatOptions {
     model?: string;
     temperature?: number;
@@ -59,14 +72,14 @@ export function useChat(options: UseChatOptions = {}) {
         const seenImages = new Set<string>();
 
         // Filter out empty messages and ensure proper format
-        let validMessages = context
+        let validMessages = (await Promise.all(context
             .reverse() // Process from newest to oldest to prioritize recent images
-            .map((m) => {
-                // Find image/audio/video children for this specific history node ID
+            .map(async (m) => {
+                // Find image/audio/video children for deep branching context
                 const mChildEdges = edges.filter(e => e.source === m.id);
                 const mChildFiles = mChildEdges
                     .map(e => nodes.find(n => n.id === e.target))
-                    .filter(n => n && (n.data.fileUrl || n.data.pdfPages));
+                    .filter(n => n && (n.data.fileUrl || n.data.pdfPages || n.data.videoFrames));
 
                 const content: any[] = [];
                 let hasVisualContent = false;
@@ -74,8 +87,8 @@ export function useChat(options: UseChatOptions = {}) {
                 let hasVideoContent = false;
 
                 // 1. Add Attached Children Files
-                mChildFiles.forEach(child => {
-                    if (!child) return;
+                for (const child of mChildFiles) {
+                    if (!child) continue;
 
                     const isAudio = child.data.mimeType?.startsWith('audio/');
 
@@ -98,15 +111,31 @@ export function useChat(options: UseChatOptions = {}) {
                                 content.push({ type: "image_url", image_url: { url: frameUrl } });
                                 seenImages.add(frameUrl);
                                 imageCount++;
-                                hasVideoContent = true; // Still mark as video for model selection
+                                hasVideoContent = true;
                             }
                         });
                     }
                     // Handle Single Files
                     else if (child.data.fileUrl) {
                         if (isAudio) {
-                            content.push({ type: "text", text: `[Audio Context: ${child.data.fileUrl}]` });
-                            hasAudioContent = true;
+                            try {
+                                const response = await fetch(child.data.fileUrl);
+                                const blob = await response.blob();
+                                const b64 = await blobToBase64(blob);
+                                // Default to mp3 if unknown, assuming Voxtral handles standard formats
+                                const format = child.data.mimeType?.split('/')[1] || 'mp3';
+                                content.push({
+                                    type: "input_audio",
+                                    input_audio: {
+                                        data: b64,
+                                        format: format === 'mpeg' ? 'mp3' : format
+                                    }
+                                });
+                                hasAudioContent = true;
+                            } catch (e) {
+                                console.error('Audio fetch failed', e);
+                                content.push({ type: "text", text: `[Audio Context (Failed to load): ${child.data.fileUrl}]` });
+                            }
                         } else if (child.data.mimeType?.startsWith('video/')) {
                             content.push({ type: "text", text: `[Video Input: ${child.data.fileUrl}]` });
                             hasVideoContent = true;
@@ -117,7 +146,7 @@ export function useChat(options: UseChatOptions = {}) {
                             hasVisualContent = true;
                         }
                     }
-                });
+                }
 
                 // 2. Add Node's Own File (Ancestor)
                 if (m.fileUrl || m.pdfPages || m.videoFrames) {
@@ -145,8 +174,22 @@ export function useChat(options: UseChatOptions = {}) {
                         });
                     } else if (m.fileUrl) {
                         if (isAudio) {
-                            content.push({ type: "text", text: `[Audio Context: ${m.fileUrl}]` });
-                            hasAudioContent = true;
+                            try {
+                                const response = await fetch(m.fileUrl);
+                                const blob = await response.blob();
+                                const b64 = await blobToBase64(blob);
+                                const format = m.mimeType?.split('/')[1] || 'mp3';
+                                content.push({
+                                    type: "input_audio",
+                                    input_audio: {
+                                        data: b64,
+                                        format: format === 'mpeg' ? 'mp3' : format
+                                    }
+                                });
+                                hasAudioContent = true;
+                            } catch (e) {
+                                content.push({ type: "text", text: `[Audio Context (Failed to load): ${m.fileUrl}]` });
+                            }
                         } else if (isVideo) {
                             content.push({ type: "text", text: `[Video Input: ${m.fileUrl}]` });
                             hasVideoContent = true;
@@ -166,27 +209,28 @@ export function useChat(options: UseChatOptions = {}) {
                     content.push({ type: "text", text: "Media Attachment" });
                 }
 
-                // If no content at all, skip (filter later)
+                // If no content, return null to filter
                 if (content.length === 0) return null;
 
                 const textParts = content.filter(c => c.type === 'text');
                 const imageParts = content.filter(c => c.type === 'image_url');
+                const audioParts = content.filter(c => c.type === 'input_audio'); // Keep audio distinct
 
-                // Combine text parts and push images to end
-                const finalContent = [...textParts, ...imageParts];
+                // Combine: Text -> Audio -> Images
+                const finalContent = [...textParts, ...audioParts, ...imageParts];
 
                 return {
                     role: m.role as 'user' | 'assistant' | 'system',
                     content: finalContent
                 };
-            })
+            })))
             .filter(m => m !== null)
-            .reverse(); // Restore chronological order
+            .reverse(); // Restore chronological
 
         // Loop again to check if we now have specific media types
         const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
         // Check for our text-based markers
-        const hasAudio = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Audio Context:')));
+        const hasAudio = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'input_audio'));
         const hasVideo = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Video Input:')));
 
         // Determine the best model for this request (Multi-modal Strategy)

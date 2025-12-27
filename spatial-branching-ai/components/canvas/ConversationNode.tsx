@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -311,19 +311,16 @@ function ConversationNodeComponent(props: NodeProps) {
                         className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
                     />
                 ) : isAudio ? (
-                    <div className="w-[340px] bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col gap-2 p-4 pr-14 shadow-sm relative">
-                        <span className="text-xs font-semibold text-foreground/70 truncate px-1" title={nodeData.fileName}>
-                            {nodeData.fileName}
-                        </span>
+                    <div className="w-[370px] h-20 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center p-4 pr-16 shadow-sm">
                         <audio
                             controls
                             src={nodeData.fileUrl}
-                            className="w-full h-8 accent-primary custom-audio-player"
+                            className="w-full h-10 accent-primary"
                         />
                     </div>
                 ) : isVideo ? (
                     <div
-                        className="relative rounded-2xl overflow-hidden border border-white/10 max-w-[320px] bg-black group/video"
+                        className="relative rounded-2xl overflow-hidden border border-white/10 max-w-[320px] bg-black"
                         onClick={(e) => {
                             e.stopPropagation();
                             setIsVideoModalOpen(true);
@@ -331,18 +328,13 @@ function ConversationNodeComponent(props: NodeProps) {
                     >
                         <video
                             src={nodeData.fileUrl}
-                            className="w-full h-auto max-h-[400px] object-cover opacity-80 group-hover/video:opacity-100 transition-opacity"
+                            className="w-full h-auto max-h-[400px] object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                             muted
                             preload="metadata"
                         />
-                        {/* Title Overlay */}
-                        <div className="absolute top-0 inset-x-0 p-3 bg-gradient-to-b from-black/80 to-transparent text-white/90 text-xs font-medium truncate pr-12 z-10 pointer-events-none">
-                            {nodeData.fileName}
-                        </div>
-
                         {/* Play Overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                            <div className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/20 shadow-xl group-hover/video:scale-110 transition-transform">
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/20 shadow-xl group-hover:scale-110 transition-transform">
                                 <Play className="h-6 w-6 text-white fill-white" />
                             </div>
                         </div>
@@ -381,24 +373,32 @@ function ConversationNodeComponent(props: NodeProps) {
 
                 {/* Media Type Badge */}
                 {(() => {
+                    let label = 'FILE';
                     let BadgeIcon = FileText;
-                    const ext = nodeData.fileName?.split('.').pop()?.toUpperCase();
-                    let label = ext || 'FILE';
 
                     if (isPdf) { label = 'PDF'; BadgeIcon = FileText; }
-                    else if (isImage) { label = ext || 'IMG'; BadgeIcon = ImageIcon; }
-                    else if (isAudio) { label = ext || 'MP3'; BadgeIcon = FileAudio; }
-                    else if (isVideo) { label = ext || 'MP4'; BadgeIcon = FileVideo; }
+                    else if (isImage) { label = nodeData.fileName?.split('.').pop()?.toUpperCase() || 'IMG'; BadgeIcon = ImageIcon; }
+                    else if (isAudio) { label = 'AUDIO'; BadgeIcon = AudioLines; }
+                    else if (isVideo) { label = 'VIDEO'; BadgeIcon = FileVideo; }
                     else return null;
 
                     return (
-                        <div className="absolute top-3 right-3 flex items-center gap-1 group/badge z-20 cursor-default">
-                            <div className="opacity-0 group-hover/badge:opacity-100 transition-all duration-200 bg-primary text-primary-foreground px-2 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 font-bold text-[11px] transform translate-x-2 group-hover/badge:translate-x-0 whitespace-nowrap">
-                                {label}
-                            </div>
-                            <div className="bg-primary text-primary-foreground w-8 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 transition-transform hover:scale-105 shrink-0">
-                                <BadgeIcon className="h-4 w-4" />
-                            </div>
+                        <div className={cn(
+                            "absolute flex items-center gap-1 z-20",
+                            isAudio ? "top-1/2 -translate-y-1/2 right-4" : "top-3 right-3"
+                        )}>
+                            <TooltipProvider>
+                                <Tooltip delayDuration={0}>
+                                    <TooltipTrigger asChild>
+                                        <div className="bg-primary text-primary-foreground w-8 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 transition-transform hover:scale-105 shrink-0 cursor-default">
+                                            <BadgeIcon className="h-4 w-4" />
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side={isAudio ? "right" : "left"} className="bg-zinc-950 text-white border-0 text-[10px] font-bold px-3 py-1.5 rounded-md shadow-xl tracking-wide max-w-[200px] truncate">
+                                        {nodeData.fileName}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     );
                 })()}
