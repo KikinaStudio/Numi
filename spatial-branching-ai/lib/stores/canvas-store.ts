@@ -430,11 +430,12 @@ export const useCanvasStore = create<CanvasState>()(
             },
         })),
         {
-            limit: 5,
+            limit: 50,
             partialize: (state) => ({
                 nodes: state.nodes,
                 edges: state.edges
             }),
+            equality: (a, b) => a.nodes === b.nodes && a.edges === b.edges,
         }
     )
 );

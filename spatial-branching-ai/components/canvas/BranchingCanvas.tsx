@@ -21,7 +21,7 @@ import NodeContextMenu from './NodeContextMenu';
 import SimpleFloatingEdge from './SimpleFloatingEdge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus, RotateCcw } from 'lucide-react';
+import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
@@ -31,6 +31,7 @@ import { SettingsDialog } from '@/components/ui/settings-dialog';
 import { UserOnboardingModal } from './UserOnboardingModal';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { CollaboratorCursor } from './CollaboratorCursor';
+import { LogoGuide } from './LogoGuide';
 import { convertPdfToImages } from '@/lib/utils/pdf-processor';
 import {
     Tooltip,
@@ -635,13 +636,7 @@ function Canvas() {
                     {/* Tree Name Panel */}
                     <Panel position="top-left" className="m-4">
                         <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
-                            <div className="flex items-center gap-2 pr-2 border-r border-border">
-                                <img
-                                    src={theme === 'dark' ? "/assets/logo/logo-white-bg.png" : "/assets/logo/logo-black-bg.png"}
-                                    alt="Numi"
-                                    className="h-7 w-auto rounded-md shadow-sm"
-                                />
-                            </div>
+                            <LogoGuide />
                             <div className="relative group">
                                 <Input
                                     value={treeName.startsWith('Untitled Tree') ? '' : treeName}
@@ -732,21 +727,6 @@ function Canvas() {
                                 size="sm"
                                 variant="ghost"
                                 className="gap-2"
-                                onClick={() => {
-                                    const temporal = useCanvasStore.temporal;
-                                    if (temporal) {
-                                        temporal.getState().undo();
-                                    }
-                                }}
-                                title="Undo (Ctrl/Cmd + Z)"
-                            >
-                                <RotateCcw className="h-4 w-4" />
-                                Undo
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="gap-2"
                                 onClick={() => setShowTreeList(true)}
                                 title="Open Saved"
                             >
@@ -773,6 +753,21 @@ function Canvas() {
                             >
                                 <UserPlus className="h-4 w-4" />
                                 Share
+                            </Button>
+                            <div className="w-px h-6 bg-border" />
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-9 w-9 p-0"
+                                onClick={() => {
+                                    const temporal = useCanvasStore.temporal;
+                                    if (temporal) {
+                                        temporal.getState().undo();
+                                    }
+                                }}
+                                title="Undo (Ctrl/Cmd + Z)"
+                            >
+                                <Undo2 className="h-4 w-4" />
                             </Button>
                         </div>
                     </Panel>
