@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useRef } from 'react';
-import { GitBranch, Trash2, RefreshCw, Copy, Scissors } from 'lucide-react';
+import { GitBranch, Trash2, RefreshCw, Copy, Scissors, Image as ImageIcon } from 'lucide-react';
 
 interface NodeContextMenuProps {
     x: number;
@@ -11,6 +11,7 @@ interface NodeContextMenuProps {
     hasTextSelection: boolean;
     selectedText?: string;
     onCreateBranch: () => void;
+    onGenerateImage: () => void;
     onRegenerate: () => void;
     onCopy: () => void;
     onDelete: () => void;
@@ -25,6 +26,7 @@ const NodeContextMenu = memo(({
     hasTextSelection,
     selectedText,
     onCreateBranch,
+    onGenerateImage,
     onRegenerate,
     onCopy,
     onDelete,
@@ -86,6 +88,17 @@ const NodeContextMenu = memo(({
                 </button>
 
                 <div className="h-px bg-border my-1" />
+
+                <button
+                    onClick={() => {
+                        onGenerateImage();
+                        onClose();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors text-left"
+                >
+                    <ImageIcon className="h-4 w-4 text-purple-500" />
+                    <span>Generate Image</span>
+                </button>
 
                 {/* Other actions */}
                 {nodeRole === 'assistant' && (

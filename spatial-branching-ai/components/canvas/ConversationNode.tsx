@@ -117,14 +117,16 @@ function ConversationNodeComponent(props: NodeProps) {
         selectNode,
         setContextMenu,
         createChildNode,
-        me
+        meName,
+        meColor
     } = useCanvasStore(useShallow((state) => ({
         updateNode: state.updateNode,
         setTextSelection: state.setTextSelection,
         selectNode: state.selectNode,
         setContextMenu: state.setContextMenu,
         createChildNode: state.createChildNode,
-        me: state.me
+        meName: state.me?.name,
+        meColor: state.me?.color
     })));
     const { generate } = useChat();
 
@@ -147,7 +149,7 @@ function ConversationNodeComponent(props: NodeProps) {
     // 3. Fallback to hash of authorName (for consistent coloring of others/legacy)
     const effectiveColor = isUser ? (
         nodeData.authorColor ||
-        (nodeData.authorName === me?.name ? me?.color : getFallbackColor(nodeData.authorName || 'Guest'))
+        (nodeData.authorName === meName ? meColor : getFallbackColor(nodeData.authorName || 'Guest'))
     ) : undefined;
 
     // Handle text selection for deep branching via context menu

@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
+import { useImageGen } from '@/lib/hooks/useImageGen';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { supabase } from '@/lib/supabase/client';
 import { TreeListDialog } from './TreeListDialog';
@@ -153,9 +154,14 @@ function Canvas() {
             const hasChildren = parentIds.has(n.id);
             const branchedTexts = branchContextsMap.get(n.id) || [];
 
+            // Optimized metadata calculation
+            // Helper for shallow array comparison
+            const areArraysEqual = (a: string[], b: string[]) =>
+                a.length === b.length && a.every((val, index) => val === b[index]);
+
             // Only update data object if metadata actually changed to prevent downstream re-renders
             if (n.data.hasChildren === hasChildren &&
-                JSON.stringify((n.data as any).branchedTexts) === JSON.stringify(branchedTexts)) {
+                areArraysEqual((n.data as any).branchedTexts || [], branchedTexts)) {
                 return n;
             }
 
@@ -197,6 +203,8 @@ function Canvas() {
 
     // AI Chat hook for generating responses
     const { generate } = useChat();
+    // Image Gen Hook
+    const { generateImage } = useImageGen();
 
     // Generate or load persistent identity for collaboration
     useEffect(() => {
@@ -823,10 +831,17 @@ function Canvas() {
                             x={contextMenu.x}
                             y={contextMenu.y}
                             nodeId={contextMenu.nodeId}
-                            nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role as string}
+                            nodeRole={nodes.find(n => n.id === contextMenu.nodeId)?.data.role}
                             hasTextSelection={textSelection?.nodeId === contextMenu.nodeId}
                             selectedText={textSelection?.text}
                             onCreateBranch={handleCreateBranch}
+                            onGenerateImage={() => {
+                                const node = nodes.find(n => n.id === contextMenu.nodeId);
+                                if (node?.data.content) {
+                                    generateImage(node.data.content, contextMenu.nodeId);
+                                }
+                                setContextMenu(null);
+                            }}
                             onRegenerate={handleRegenerate}
                             onCopy={handleCopy}
                             onDelete={handleDelete}
