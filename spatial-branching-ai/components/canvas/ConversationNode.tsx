@@ -416,7 +416,7 @@ function ConversationNodeComponent(props: NodeProps) {
                             "w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed px-6 pb-8",
                             nodeData.branchContext ? "pt-5" : "pt-12" // Add top padding if no branch context to clear icon
                         )}
-                        placeholder={!nodeData.parentId ? "Welcome to Numi! 🌸 Type your idea, or drag & drop files (images/PDFs) to start. I'm here to help!" : "Type your message here..."}
+                        placeholder={!nodeData.parentId ? "Plant your idea ..." : "Type your message here..."}
                     />
                 ) : (
 
@@ -447,7 +447,7 @@ function ConversationNodeComponent(props: NodeProps) {
                                     branchedTexts={(nodeData as any).branchedTexts || []}
                                 />
                             ) : (
-                                isUser ? (!nodeData.parentId ? "Welcome to Numi! 🌸 Type your idea, or drag & drop files (images/PDFs) to start. I'm here to help!" : "Click to type...") : 'Generating...'
+                                isUser ? (!nodeData.parentId ? "Plant your idea ..." : "Click to type...") : 'Generating...'
                             )
                         }
                         {!selected && !isHovered && nodeData.hasChildren && (

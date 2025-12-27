@@ -435,7 +435,29 @@ export const useCanvasStore = create<CanvasState>()(
                 nodes: state.nodes,
                 edges: state.edges
             }),
-            equality: (a, b) => a.nodes === b.nodes && a.edges === b.edges,
+            equality: (a, b) => {
+                // Quick check: if counts differ, something was added/removed. Save it.
+                if (a.nodes.length !== b.nodes.length || a.edges.length !== b.edges.length) {
+                    return false;
+                }
+
+                // Deep check: Compare node content/data, IGNORING position/selected/etc.
+                // We assume order is stable for updates.
+                const areNodesStructurallyEqual = a.nodes.every((nodeA, index) => {
+                    const nodeB = b.nodes[index];
+                    return (
+                        nodeA.id === nodeB.id &&
+                        nodeA.data.content === nodeB.data.content &&
+                        nodeA.data.role === nodeB.data.role &&
+                        nodeA.data.branchContext === nodeB.data.branchContext &&
+                        nodeA.data.fileName === nodeB.data.fileName
+                    );
+                });
+
+                // If content is same, we ignore the change (it was just a move/select).
+                // If content differs, we save it.
+                return areNodesStructurallyEqual;
+            },
         }
     )
 );

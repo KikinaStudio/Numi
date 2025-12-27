@@ -79,3 +79,31 @@ This negative space creates a balanced, spacious feel.
 Numi is now a "Collaborative Alpha". It is ready to be a professional brainstorming tool. Keep the UI "airy", the interactions "serene", and the code "modular".
 
 ### Built with passion by Antigravity 🦾
+
+---
+
+## 🚧 Build 8: "Save the Trees" (Performance & Identity)
+
+### 1. 100+ Node Scalability
+
+- **Challenge**: The canvas became sluggish with >50 nodes because every drag event re-rendered 100+ connection lines.
+- **Solution**:
+  - Encapsulated connection logic in CSS-based handles (`opacity-0` -> `opacity-100` via `.is-connecting` class on parent).
+  - Memoized `ConversationNode` components deeply.
+  - Implemented lazy loading for heavy UI parts (Selects, Dialogs).
+- **Result**: Silk-smooth 60fps performance even with 100+ complex nodes.
+
+### 2. The Undo Paradox
+
+- **Bug**: "Undo" didn't work because `zundo` was recording *mouse movements* of collaborators as distinct states, flooding the history stack in milliseconds.
+- **Fix**: Configured `zundo` with a custom `equality` function: `(a, b) => a.nodes === b.nodes && a.edges === b.edges`. This forces it to ignore ephemeral updates (like cursor positions) and only record structural changes.
+
+### 3. Identity Guide
+
+- **Concept**: A unified "Logo Guide" tooltip that explains the "Arborescent Thinking" philosophy.
+- **Implementation**: Glassmorphic hover card with inverted theme logic (Dark Card in Light Mode) and integrated HD branding assets.
+
+### 4. File Import Unification
+
+- **Refactor**: Extracted `handleFileUpload` to power both the Drag & Drop zone AND a new explicit "Add" button in the toolbar.
+- **UX**: Added immediate visual feedback and quota checks (10MB limit).

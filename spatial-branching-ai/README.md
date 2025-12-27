@@ -1,10 +1,10 @@
-# Spatial Branching AI 🧠
+# Numi 🧠
 
 An intelligent infinite canvas for non-linear AI conversations. Visualize your thoughts, branch off interesting points, and collaborate in a shared spatial environment.
 
 ## 🎯 Project Objective
 
-The goal of **Spatial Branching AI** is to break the linear constraints of traditional chat interfaces. By treating conversations as a dynamic, branching tree on an infinite canvas, users can explore multiple ideas simultaneously without losing context.
+The goal of **Numi** is to break the linear constraints of traditional chat interfaces. By treating conversations as a dynamic, branching tree on an infinite canvas, users can explore multiple ideas simultaneously without losing context.
 
 Key objectives include:
 
@@ -49,7 +49,7 @@ Key objectives include:
 - **Canvas Engine**: @xyflow/react
 - **Database & Realtime**: Supabase (PostgreSQL)
 - **AI Inference**: OpenRouter (Support for GPT-4o, Claude 3.5, Gemini Pro, Llama 3)
-- **State Management**: Zustand + Immer
+- **State Management**: Zustand + Immer + Zundo
 - **Styling**: Tailwind CSS + Radix UI
 
 ## 🔐 Environment Variables
@@ -80,24 +80,22 @@ ALTER PUBLICATION supabase_realtime ADD TABLE nodes, edges, trees, tree_members;
 1. **New Tree**: Double-click anywhere on the canvas to start.
 2. **Branch**: Select text in a node to see the branching menu instantly.
 3. **Collaborate**: Click the **Share** button, copy the link, and watch the **Diagnostics Panel** turn green ("LIVE SYNC").
-4. **Presence**: Hover over avatars in the toolbar to see who is currently exploring the canvas with you.
+4. **Undo**: Made a mistake? Press `Ctrl/Cmd + Z` or click the rewind button in the bottom bar.
 
-## 🚀 Recent Improvements (Build 6 & 7)
+## 🚀 Recent Improvements (Build 8 - "Save the Trees")
 
-- **Node UX Serenity**: Implemented auto-collapsing for old nodes (Questions & Answers). Nodes with children shrink to 250px width when inactive to keep the canvas clutter-free.
-- **Bulk Tree Management**: Added multi-select and delete functionality to the "Open Trees" dialog with a "Select All" option and confirmation safety.
-- **Storage Guard**: Enforced a **10MB storage limit per tree**. The system now tracks `fileSize` and prevents uploads that exceed the quota.
-- **Fixed Text Selection**: Resolved a critical bug where selecting text mid-sentence would snap to the start. Branching is now "serene" and accurate.
-- **Branding Excellence**: Swapped the top-left logo with high-fidelity, interverted assets tailored for light and dark modes.
-- **CSS Hygiene**: Optimized CSS for Tailwind v4 and resolved IDE linting warnings.
+- **Performance at Scale**: Refactored `ConversationNode` and `BranchingCanvas` to support 100+ nodes with zero-lag connections and lazy loading.
+- **Undo/Redo**: Integrated `zundo` with a custom shallow equality check to ignore cursor movements, ensuring only meaningful edits (deletions, moves) are recorded.
+- **Files & Identity**: Added a "+" button for imports, simplified drag-and-drop, and enriched the brand with a glassmorphic "Logo Guide" tooltip explaining the **Numi** philosophy for ADHD/arborescent minds.
+- **Polish**: Updated welcome messages, refined placeholders, and swapped logos for HD assets.
 
 ## 🤝 Handover & Next Steps
 
-Numi is now a stable, feature-rich **Professional Alpha**. For a deep dive into the bugs solved, hurdles overcome, and UI brand guidelines, please refer to the [DEVELOPMENT_JOURNAL.md](./DEVELOPMENT_JOURNAL.md).
+Numi is now a stable, feature-rich **Professional Alpha**. For a deep dive into the bugs solved, technical hurdles, and UI brand guidelines, please refer to the [DEVELOPMENT_JOURNAL.md](./DEVELOPMENT_JOURNAL.md).
 
 Next developer focuses:
 
-1. **Model Expansion**: Test and integrate more OpenRouter models (the store is already pre-configured for dual-model strategies).
+1. **Model Expansion**: Test and integrate more OpenRouter models.
 2. **Advanced Multi-Modal**: Further optimize PDF-to-image conversion speed.
 3. **Enterprise Polish**: Consider adding authenticated sharing links.
 

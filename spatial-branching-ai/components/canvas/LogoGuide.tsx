@@ -44,7 +44,7 @@ export function LogoGuide() {
                     {/* Header / Logo */}
                     <div className="mb-6">
                         <img
-                            src={isDark ? "/assets/logo/numi-text-black.png" : "/assets/logo/numi-text-white.png"}
+                            src={isDark ? "/assets/logo/numi-full-black.png" : "/assets/logo/numi-full-white.png"}
                             alt="Numi Logo"
                             className="h-10 w-auto"
                         />
@@ -60,7 +60,7 @@ export function LogoGuide() {
                             Save the Trees.
                         </h3>
                         <p className={cn("text-sm leading-relaxed", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                            Think in branches, create freely. Numi uses spatial design to match the speed and non-linear nature of your thoughts.
+                            For the minds that tracked every moving thing in class, the ADHDs thinking in arborescence. Numi is the fertile soil where your thoughts branch out freely. An AI-assisted everything tool, feeding brainstorming, growing ideas together.
                         </p>
                     </div>
 
@@ -75,7 +75,7 @@ export function LogoGuide() {
                             <div>
                                 <h4 className="text-sm font-bold mb-0.5">Branching Context</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                                    Select any text or click a node to branch off a new idea instantly without losing flow.
+                                    <span className="font-bold">Select any text</span> or click a node to branch off a new idea instantly without losing flow.
                                 </p>
                             </div>
                         </div>
@@ -87,7 +87,7 @@ export function LogoGuide() {
                             <div>
                                 <h4 className="text-sm font-bold mb-0.5">Drag & Drop</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                                    Drop images or PDFs directly onto the canvas to analyze them with vision models.
+                                    Drop <span className="font-bold">images</span> or <span className="font-bold">PDFs</span> directly onto the canvas to analyze them with vision models.
                                 </p>
                             </div>
                         </div>
@@ -99,7 +99,7 @@ export function LogoGuide() {
                             <div>
                                 <h4 className="text-sm font-bold mb-0.5">Personas</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                                    Assign specific roles (Expert, Creative, Critic) to different nodes for varied perspectives.
+                                    Assign <span className="font-bold">agent</span> roles (Expert, Creative, Critic) to branches for varied perspectives.
                                 </p>
                             </div>
                         </div>
@@ -111,7 +111,7 @@ export function LogoGuide() {
                             <div>
                                 <h4 className="text-sm font-bold mb-0.5">Real-time Collab</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                                    Invite friends to collaborate on your tree in real-time.
+                                    <span className="font-bold">Invite friends</span> to collaborate on your tree in real-time.
                                 </p>
                             </div>
                         </div>
@@ -123,7 +123,7 @@ export function LogoGuide() {
                             <div>
                                 <h4 className="text-sm font-bold mb-0.5">Save & Sync</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                                    Save your trees to the cloud and access them anytime.
+                                    Save your trees to the cloud and access them <span className="font-bold">anytime</span>.
                                 </p>
                             </div>
                         </div>

@@ -401,21 +401,10 @@ function Canvas() {
         }
 
         try {
-            // Check file type
-            const isImage = file.type.startsWith('image/');
-            const isPdf = file.type === 'application/pdf';
-
-            if (!isImage && !isPdf) {
-                if (!file.name.toLowerCase().endsWith('.pdf') && !file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-                    alert('Only images and PDFs are supported.');
-                    return;
-                }
-            }
-
             // ----------------------------------------------------------------------
-            // STORAGE QUOTA CHECK (10MB Limit)
+            // STORAGE QUOTA CHECK (100MB Limit)
             // ----------------------------------------------------------------------
-            const MAX_TREE_SIZE = 10 * 1024 * 1024; // 10 MB in bytes
+            const MAX_TREE_SIZE = 100 * 1024 * 1024; // 100 MB in bytes
 
             // Calculate current total size of files in the tree
             const currentTotalSize = useCanvasStore.getState().nodes.reduce((acc, node) => {
@@ -424,7 +413,18 @@ function Canvas() {
 
             if (currentTotalSize + file.size > MAX_TREE_SIZE) {
                 const currentMB = (currentTotalSize / (1024 * 1024)).toFixed(2);
-                alert(`Storage limit exceeded (10MB per tree).\nCurrent usage: ${currentMB}MB.\nFile size: ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                alert(`Storage limit exceeded (100MB per tree).\nCurrent usage: ${currentMB}MB.\nFile size: ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                return;
+            }
+
+            // Check file type
+            const isImage = file.type.startsWith('image/');
+            const isPdf = file.type === 'application/pdf';
+            const isAudio = file.type.startsWith('audio/');
+            const isVideo = file.type.startsWith('video/');
+
+            if (!isImage && !isPdf && !isAudio && !isVideo) {
+                alert('Only images, PDFs, audio, and video files are supported.');
                 return;
             }
 
@@ -482,7 +482,7 @@ function Canvas() {
                 return;
             }
 
-            // Handle Image
+            // Handle Image, Audio, Video
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random().toString(36).substring(7)}_${Date.now()}.${fileExt}`;
             const filePath = `${treeId || 'temp'}/${fileName}`;
