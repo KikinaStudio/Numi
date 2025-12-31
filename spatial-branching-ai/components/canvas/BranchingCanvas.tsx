@@ -177,20 +177,55 @@ function Canvas() {
         });
     }, [nodes, edges]);
 
-    // Keyboard Shortcuts (Undo)
+    // Smart Auto-Focus & Global Typing Handler
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-                e.preventDefault();
-                // Access temporal store directly
-                const temporal = useCanvasStore.temporal;
-                if (temporal) {
-                    temporal.getState().undo();
-                }
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            // Check if user is typing in a valid input field
+            const target = e.target as HTMLElement;
+            if (target.isContentEditable ||
+                target.tagName === 'INPUT' ||
+                target.tagName === 'TEXTAREA' ||
+                target.tagName === 'SELECT') {
+                return;
+            }
+
+            // Ignore shortcuts / modifiers
+            if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) {
+                return;
+            }
+
+            // Proceed to redirect typing to the last User node
+            const nodes = useCanvasStore.getState().nodes;
+            // Find last user node (reversed copy)
+            const lastUserNode = [...nodes].reverse().find(n => n.data.role === 'user');
+
+            if (lastUserNode) {
+                // 1. Update content with the new char
+                const newContent = (lastUserNode.data.content || '') + e.key;
+                useCanvasStore.getState().updateNode(lastUserNode.id, {
+                    content: newContent
+                });
+
+                // 2. Select the node (this triggers edit mode via ConversationNode effect)
+                useCanvasStore.getState().selectNode(lastUserNode.id);
+
+                // Prevent default global behavior since we handled it
+                // e.preventDefault(); // Optional: might block standard browser shortcuts if we are not careful, but checked logic looks safe
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+
+        // Auto-select last user node on mount if nothing selected
+        const state = useCanvasStore.getState();
+        if (!state.selectedNodeId && state.nodes.length > 0) {
+            const lastUserNode = [...state.nodes].reverse().find(n => n.data.role === 'user');
+            if (lastUserNode) {
+                state.selectNode(lastUserNode.id);
+            }
+        }
+
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, []);
 
 

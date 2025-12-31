@@ -185,9 +185,17 @@ function ConversationNodeComponent(props: NodeProps) {
     }, [id, setTextSelection, setContextMenu]);
 
 
+    // Auto-enter edit mode when selected (User nodes only)
+    useEffect(() => {
+        if (selected && isUser && !nodeData.fileUrl) {
+            setIsEditing(true);
+        }
+    }, [selected, isUser, nodeData.fileUrl]);
+
     const handleClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         selectNode(id);
+        // setIsEditing handled by effect above
     }, [id, selectNode]);
 
     const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -198,6 +206,13 @@ function ConversationNodeComponent(props: NodeProps) {
     }, [isUser]);
 
     const handleBlur = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
+        // Only exit editing if we actually clicked outside (handled by canvas click usually clearing selection)
+        // But for local state, if we lose focus but are still selected, we might want to stay in edit mode?
+        // User wants "pre-cliqué par defaut".
+        // Let's keep strict standard behavior: Blur -> stop editing visually?
+        // No, if I click 'Save' or 'Generate', that's different.
+        // Let's stick to: Blur updates content, but if selected, the effect might re-trigger?
+        // No, effect runs on dependency change.
         setIsEditing(false);
         updateNode(id, { content: e.target.value });
     }, [id, updateNode]);
@@ -520,7 +535,15 @@ function ConversationNodeComponent(props: NodeProps) {
             <div className="p-0 relative nodrag cursor-auto">
                 {isEditing || (selected && !isAssistant) ? (
                     <textarea
-                        ref={textareaRef}
+                        ref={(el) => {
+                            // @ts-ignore
+                            textareaRef.current = el;
+                            if (el && isEditing) {
+                                // Smart cursor positioning: end of text
+                                el.setSelectionRange(el.value.length, el.value.length);
+                                el.focus();
+                            }
+                        }}
                         autoFocus
                         defaultValue={nodeData.content}
                         onBlur={handleBlur}
