@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useRef, useState, useMemo } from 'react';
+import { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { useReactFlow } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
