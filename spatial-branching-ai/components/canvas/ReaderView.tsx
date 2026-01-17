@@ -1,11 +1,11 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { X, GitBranch } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useCanvasStore, useTextSelection } from '@/lib/stores/canvas-store';
 import { cn } from '@/lib/utils';
 
@@ -15,61 +15,53 @@ export const ReaderView = () => {
     const nodes = useCanvasStore(state => state.nodes);
     const setTextSelection = useCanvasStore(state => state.setTextSelection);
     const setContextMenu = useCanvasStore(state => state.setContextMenu);
-    const textSelection = useTextSelection();
-
-    const node = readingNodeId ? nodes.find(n => n.id === readingNodeId) : null;
-
-    console.log('[ReaderView] Render. readingNodeId:', readingNodeId, 'Node found:', !!node);
+    const getAncestorNodes = useCanvasStore(state => state.getAncestorNodes);
 
 
-    // Handle closing on Escape key
+    // Get full thread context
+    const thread = useMemo(() => {
+        if (!readingNodeId) return [];
+        const ancestors = getAncestorNodes(readingNodeId);
+        const current = nodes.find(n => n.id === readingNodeId);
+        return current ? [...ancestors, current] : ancestors;
+    }, [readingNodeId, nodes, getAncestorNodes]);
+
+    // Handle Closing
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setReadingNodeId(null);
-            }
+            if (e.key === 'Escape') setReadingNodeId(null);
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [setReadingNodeId]);
 
-    // Handle Text Selection locally in Reader View, propagating to global store for Context Menu
-    const handleTextSelection = useCallback((e: React.MouseEvent) => {
-        if (!readingNodeId) return;
-
+    // --- TEXT SELECTION LOGIC (Simplified for Thread View) ---
+    const handleGlobalSelection = useCallback((e: React.MouseEvent) => {
         const selection = window.getSelection();
         const text = selection?.toString().trim();
-
         if (text && text.length > 0) {
-            // Calculate selection position relative to viewport for the context menu
-            // We use the mouse position for the context menu to keep it consistent with canvas interaction
-            const range = selection!.getRangeAt(0);
 
-            setTextSelection({
-                nodeId: readingNodeId,
-                text: text,
-                range: [0, 0] // Range indices heavily depend on DOM structure, simplifying for now
-            });
+            // Try to find the node ID from the DOM
+            let targetParams = (e.target as HTMLElement).closest('[data-node-id]');
+            const targetId = targetParams?.getAttribute('data-node-id') || readingNodeId;
 
-            // Trigger Context Menu immediately at mouse position
-            // This is crucial: Reader View sits on top (z-50), so the standard canvas context menu (z-50) might conflict.
-            // But since Context Menu is rendered in BranchingCanvas, it might be *behind* ReaderView.
-            // We need to ensure ContextMenu is visible on top OR render a specific Reader Context Menu.
-            // Strategy: Let's reuse the global context menu but ensure ReaderView is z-[60]? 
-            // Or better: Let canvas handle it, but ReaderView needs to be compatible.
-            // If ReaderView is a portal or absolute overlay in BranchingCanvas, it will be fine.
-
-            setContextMenu({
-                x: e.clientX,
-                y: e.clientY,
-                nodeId: readingNodeId
-            });
+            if (targetId) {
+                setTextSelection({
+                    nodeId: targetId,
+                    text: text,
+                    range: [0, 0] // Dummy range
+                });
+                setContextMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    nodeId: targetId
+                });
+            }
         }
     }, [readingNodeId, setTextSelection, setContextMenu]);
 
-    // Click outside to close (logic handled by wrapper div)
 
-    if (!readingNodeId || !node) return null;
+    if (!readingNodeId || thread.length === 0) return null;
 
     return (
         <AnimatePresence>
@@ -78,69 +70,83 @@ export const ReaderView = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex justify-center overflow-y-auto cursor-default"
-                onClick={(e: React.MouseEvent<HTMLDivElement>) => {
-                    // Close if clicking the backdrop (not the content)
-                    if (e.target === e.currentTarget) {
-                        setReadingNodeId(null);
-                    }
+                className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex justify-center overflow-y-auto cursor-text"
+                onClick={(e) => {
+                    if (e.target === e.currentTarget) setReadingNodeId(null);
                 }}
             >
-                <div className="relative w-full max-w-2xl mt-12 mb-32 px-6 sm:px-12">
-                    <motion.div
-                        layoutId={`node-content-${readingNodeId}`} // Smooth layout transition source to target
-                        className="prose prose-lg dark:prose-invert prose-headings:font-normal prose-p:font-light prose-p:leading-loose text-foreground/90 font-serif md:font-sans md:text-xl"
-                        onMouseUp={handleTextSelection}
+                <div
+                    className="relative w-full max-w-3xl py-24 px-6 md:px-12"
+                    onMouseUp={handleGlobalSelection}
+                >
+                    {/* Close Button - Fixed Position */}
+                    <button
+                        onClick={() => setReadingNodeId(null)}
+                        className="fixed top-6 right-6 p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-all z-[110]"
                     >
-                        <div className="flex items-center justify-between mb-8 opacity-50">
-                            <div className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
-                                {node.data.role === 'user' ? 'Question' : 'Answer'}
-                            </div>
-                            <button
-                                onClick={() => setReadingNodeId(null)}
-                                className="p-2 hover:bg-muted rounded-full transition-colors"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
+                        <X className="h-6 w-6" />
+                    </button>
 
-                        {/* Title / Prompt Context (Optional future feature, keeping space for it) */}
+                    {/* Thread Map */}
+                    <div className="space-y-12">
+                        {thread.map((node, index) => {
+                            const isUser = node.data.role === 'user';
+                            const isLast = index === thread.length - 1;
 
-                        <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeRaw]}
-                            components={{
-                                code({ className, children, ...props }) {
-                                    const match = /language-(\w+)/.exec(className || '');
-                                    return match ? (
-                                        <div className="relative group rounded-md border border-border bg-muted/50 my-4">
-                                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="text-xs text-muted-foreground uppercase">{match[1]}</div>
-                                            </div>
-                                            <pre className="overflow-x-auto p-4 text-sm font-mono leading-relaxed custom-scrollbar">
-                                                <code className={className} {...props}>
-                                                    {children}
-                                                </code>
-                                            </pre>
-                                        </div>
-                                    ) : (
-                                        <code className={cn("bg-muted px-1.5 py-0.5 rounded-md font-mono text-sm", className)} {...props}>
-                                            {children}
-                                        </code>
-                                    );
-                                },
-                                p: ({ children }) => <p className="mb-6 leading-8 tracking-wide">{children}</p>,
-                                ul: ({ children }) => <ul className="list-disc pl-6 mb-6 space-y-2">{children}</ul>,
-                                ol: ({ children }) => <ol className="list-decimal pl-6 mb-6 space-y-2">{children}</ol>,
-                                h1: ({ children }) => <h1 className="text-3xl font-normal mt-10 mb-6">{children}</h1>,
-                                h2: ({ children }) => <h2 className="text-2xl font-normal mt-8 mb-4">{children}</h2>,
-                                h3: ({ children }) => <h3 className="text-xl font-medium mt-6 mb-3">{children}</h3>,
-                                blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/30 pl-4 italic text-muted-foreground my-6">{children}</blockquote>,
-                            }}
-                        >
-                            {node.data.content}
-                        </ReactMarkdown>
-                    </motion.div>
+                            return (
+                                <motion.div
+                                    key={node.id}
+                                    layoutId={isLast ? `node-content-${node.id}` : undefined} // Only animate the last one from canvas to avoid chaos
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.05 }}
+                                    className={cn(
+                                        "group relative",
+                                        isUser ? "pl-0" : "pl-0"
+                                    )}
+                                    data-node-id={node.id}
+                                >
+                                    {/* Minimal Header */}
+                                    <div className="flex items-center gap-3 mb-4 opacity-40 group-hover:opacity-100 transition-opacity select-none">
+                                        <div className={cn(
+                                            "w-2 h-2 rounded-full",
+                                            isUser ? "bg-foreground" : "bg-primary"
+                                        )} />
+                                        <span className="text-xs font-medium uppercase tracking-widest">
+                                            {isUser ? (node.data.authorName || 'User') : 'Numi'}
+                                        </span>
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className={cn(
+                                        "prose prose-lg dark:prose-invert max-w-none prose-headings:font-normal prose-p:leading-loose",
+                                        "font-serif md:font-sans md:text-xl text-foreground/90",
+                                        isUser ? "font-medium text-foreground" : "font-light"
+                                    )}>
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            rehypePlugins={[rehypeRaw]}
+                                            components={{
+                                                p: ({ children }) => <p className="mb-6">{children}</p>,
+                                                code({ className, children, ...props }) {
+                                                    const match = /language-(\w+)/.exec(className || '');
+                                                    return match ? (
+                                                        <div className="text-sm font-mono bg-muted/50 p-4 rounded-lg my-4 overflow-x-auto">
+                                                            <code className={className} {...props}>{children}</code>
+                                                        </div>
+                                                    ) : (
+                                                        <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono" {...props}>{children}</code>
+                                                    )
+                                                }
+                                            }}
+                                        >
+                                            {node.data.content}
+                                        </ReactMarkdown>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
                 </div>
             </motion.div>
         </AnimatePresence>

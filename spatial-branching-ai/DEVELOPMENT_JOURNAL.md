@@ -155,3 +155,10 @@ Numi is now a "Collaborative Alpha". It is ready to be a professional brainstorm
 
 - **Aesthetics**: "Minimalist" is the key word. No background shapes on icon buttons.
 - **Workflow**: The user expects standard web behavior (typing = input), regardless of where the cursor is.
+
+### Refinements (Session 2)
+
+- **Reader Mode 2.0 (Thread View)**: Now displays the entire conversation history (ancestors) in a continuous, minimalist flow, rather than just the single node.
+- **Auto-Title**: Automatically names the tree (3 words max) upon the first interaction.
+- **Node Management**: Added a discrete 'X' button for deleting nodes on hover.
+- **UI Polish**: Removed borders from the Persona Selector for a cleaner, floating aesthetic.

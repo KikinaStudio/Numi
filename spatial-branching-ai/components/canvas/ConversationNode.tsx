@@ -118,6 +118,7 @@ function ConversationNodeComponent(props: NodeProps) {
         setContextMenu,
         createChildNode,
         setReadingNodeId,
+        deleteNode,
         meName,
         meColor
     } = useCanvasStore(useShallow((state) => ({
@@ -127,6 +128,7 @@ function ConversationNodeComponent(props: NodeProps) {
         setContextMenu: state.setContextMenu,
         createChildNode: state.createChildNode,
         setReadingNodeId: state.setReadingNodeId,
+        deleteNode: state.deleteNode,
         meName: state.me?.name,
         meColor: state.me?.color
     })));
@@ -613,7 +615,7 @@ function ConversationNodeComponent(props: NodeProps) {
                                 }
                             }}
                         >
-                            <SelectTrigger className="h-7 w-[100px] text-[10px] font-bold bg-background border-input shadow-sm backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+                            <SelectTrigger className="h-7 w-[100px] text-[10px] font-bold bg-transparent border-none shadow-none text-muted-foreground hover:text-foreground transition-colors">
                                 <SelectValue placeholder="Agent" />
                             </SelectTrigger>
                             <SelectContent className="bg-popover">
@@ -683,7 +685,18 @@ function ConversationNodeComponent(props: NodeProps) {
                         <Maximize2 className="h-4 w-4" />
                     </button>
                 )}
-                {/* Copy Button Removed per user request */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // Confirm delete? Or just delete? "Serene" usually implies undoable, but let's just delete for now.
+                        // Store has undo (zundo), so accidental delete is fine.
+                        deleteNode(id);
+                    }}
+                    className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                    title="Delete Node"
+                >
+                    <X className="h-4 w-4" />
+                </button>
             </div>
 
 

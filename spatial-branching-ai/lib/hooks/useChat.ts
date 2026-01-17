@@ -330,7 +330,7 @@ STYLE: Keep it short and to the point.`;
             // Small delay to ensure the store has processed the last node update
             setTimeout(async () => {
                 const { treeName, setTreeName } = useCanvasStore.getState();
-                if (treeName === 'Untitled Conversation') {
+                if (!treeName || treeName === 'Untitled Conversation') {
                     try {
                         // Find the user prompt that triggered this response
                         const context = getConversationContext(nodeId);
@@ -340,7 +340,7 @@ STYLE: Keep it short and to the point.`;
                         const assistantResponse = fullContent;
 
                         if (firstUserMessage) {
-                            const namingPrompt = `Summarize this conversation topic in 4 words or less. strictly 4 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
+                            const namingPrompt = `Summarize this conversation topic in 3 words or less. strictly 3 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
 
                             const nameResponse = await fetch('/api/chat', {
                                 method: 'POST',
