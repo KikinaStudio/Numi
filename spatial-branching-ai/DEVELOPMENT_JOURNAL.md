@@ -109,9 +109,11 @@ Numi is now a "Collaborative Alpha". It is ready to be a professional brainstorm
 - **UX**: Added immediate visual feedback and quota checks (10MB limit).
 
 ## [2025-12-27] Build 9: The Multimodal Awakening 👁️👂
+
 **Objective**: Enhance Numi with "senses" - Video Vision and Audio Listening.
 
 ### Features
+
 1. **Video Vision Pipeline**:
    - Implemented client-side keyframe extraction (Start/Mid/End).
    - Integrated `nvidia/nemotron-nano-12b-v2-vl` via OpenRouter.
@@ -125,4 +127,31 @@ Numi is now a "Collaborative Alpha". It is ready to be a professional brainstorm
    - **Enter-to-Submit**: Streamlined typing flow.
 
 ### Technical Win
+
 - Solved the "AI can't watch videos" limitation by building a `video-processor.ts` utility that acts as the AI's "eyes", converting temporal media into static vision context.
+
+## [2025-12-27] Build 10: The Reading Room & Smart Focus 📖⚡️
+
+**Objective**: Transform Numi from a purely spatial tool into a focused reading environment, while reducing friction for starting thoughts.
+
+### Build 10 Features
+
+1. **Reader Mode (v1)**:
+   - Added a "Full Screen" toggle to Answer nodes.
+   - Triggers a distraction-free, minimalist document overlay (`ReaderView.tsx`).
+   - Integrated with `framer-motion` for seamless `layoutId` transitions.
+   - **Critical**: Text selection and branching works *inside* Reader Mode, preserving the core core mechanic even in flat view.
+
+2. **Smart Focus**:
+   - **Zero-Click Typing**: Users can now type anywhere on the canvas, and the keystrokes are automatically captured by the last active Prompt node.
+   - **Auto-Select**: The last user node is strictly pre-selected on load/mount.
+
+### Technical Challenges
+
+- **The "Missing Component"**: We initially implemented `ReaderView` logic but forget to physically mount the component in `BranchingCanvas.tsx`. It was a simple fix but a good reminder to check the render tree.
+- **CLI Confusion**: Clarified the difference between `npx vercel --prod` and users attempting `npx run`.
+
+### User Preferences Learned
+
+- **Aesthetics**: "Minimalist" is the key word. No background shapes on icon buttons.
+- **Workflow**: The user expects standard web behavior (typing = input), regardless of where the cursor is.
