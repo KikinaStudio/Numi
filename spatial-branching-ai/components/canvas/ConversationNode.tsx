@@ -471,15 +471,30 @@ function ConversationNodeComponent(props: NodeProps) {
                         <TooltipTrigger asChild>
                             <div
                                 className={cn(
-                                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0",
-                                    isAssistant && "bg-primary"
+                                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0 overflow-hidden",
+                                    isAssistant && "bg-primary",
+                                    // Override background for Numi Standard to be black to match the logo file
+                                    isAssistant && !nodeData.selectedPersonaId && "bg-black"
                                 )}
                                 style={isUser && effectiveColor ? {
                                     backgroundColor: effectiveColor
                                 } : {}}
                             >
                                 {isAssistant ? (() => {
-                                    const persona = PERSONAS.find(p => p.id === (nodeData.selectedPersonaId || 'standard'));
+                                    const personaId = nodeData.selectedPersonaId || 'standard';
+
+                                    // Special Case for Standard: Numi Logo
+                                    if (personaId === 'standard') {
+                                        return (
+                                            <img
+                                                src="/assets/logo/logo-black-bg.png"
+                                                alt="Numi"
+                                                className="h-full w-full object-cover"
+                                            />
+                                        );
+                                    }
+
+                                    const persona = PERSONAS.find(p => p.id === personaId);
                                     const IconComponent = (() => {
                                         switch (persona?.icon) {
                                             case 'Search': return Search;
@@ -677,15 +692,14 @@ function ConversationNodeComponent(props: NodeProps) {
                 )}
             </div>
 
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-50">
+            <div className="absolute top-3 right-3 flex items-center gap-1 z-50">
                 {isAssistant && (
                     <button
                         onClick={(e) => {
-                            console.log('📖 Reader Mode triggered for:', id);
                             e.stopPropagation();
                             setReadingNodeId(id);
                         }}
-                        className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                        className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground/60 opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-foreground transition-all"
                         title="Reader Mode"
                     >
                         <Maximize2 className="h-4 w-4" />
@@ -698,7 +712,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         // Store has undo (zundo), so accidental delete is fine.
                         deleteNode(id);
                     }}
-                    className="p-1.5 text-muted-foreground/60 group-hover:opacity-40 hover:!opacity-100 hover:text-red-500 transition-all"
+                    className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground/60 opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-red-500 transition-all"
                     title="Delete Node"
                 >
                     <X className="h-4 w-4" />
