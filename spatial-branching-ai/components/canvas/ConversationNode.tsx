@@ -551,7 +551,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
                         className={cn(
-                            "w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed px-6 pb-8",
+                            "w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] px-6 pb-8 placeholder:italic placeholder:text-muted-foreground/70",
                             nodeData.branchContext ? "pt-5" : "pt-12" // Add top padding if no branch context to clear icon
                         )}
                         placeholder={!nodeData.parentId ? "Plant your idea ..." : "Type your message here..."}
@@ -570,7 +570,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         className={cn(
                             'prose-notion select-text cursor-text px-6 pb-8 min-h-[100px] nopan nodrag nowheel',
                             nodeData.branchContext ? "pt-5" : "pt-12", // Add top padding if no branch context to clear icon
-                            !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground italic',
+                            !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground/70 italic',
                             !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "max-h-[120px] overflow-hidden"
                         )}
                         style={!selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl ? {
@@ -598,7 +598,14 @@ function ConversationNodeComponent(props: NodeProps) {
 
                 {/* Generate Button for User Nodes */}
                 {isUser && (isEditing || nodeData.content.trim().length > 0 || selected) && (
-                    <div className="absolute bottom-2 right-2 flex items-center gap-2 justify-end z-10 transition-opacity">
+                    <div
+                        className="absolute bottom-2 right-2 flex items-center gap-1 justify-end z-10 transition-opacity"
+                        onPointerDown={(e) => {
+                            // Prevent blur when clicking buttons in this toolbar
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
+                    >
                         <Select
                             value={nodeData.selectedPersonaId || 'standard'}
                             onValueChange={(value) => {
@@ -615,7 +622,7 @@ function ConversationNodeComponent(props: NodeProps) {
                                 }
                             }}
                         >
-                            <SelectTrigger className="h-7 w-[100px] text-[10px] font-bold bg-transparent border-none shadow-none text-muted-foreground hover:text-foreground transition-colors">
+                            <SelectTrigger className="h-7 w-auto min-w-[60px] max-w-[120px] gap-0.5 px-2 text-[10px] font-bold bg-transparent border-none shadow-none text-muted-foreground hover:text-foreground transition-colors justify-start">
                                 <SelectValue placeholder="Agent" />
                             </SelectTrigger>
                             <SelectContent className="bg-popover">
@@ -647,9 +654,8 @@ function ConversationNodeComponent(props: NodeProps) {
                         )}
 
                         <button
-                            onMouseDown={(e) => e.preventDefault()} // Prevent blur
                             onClick={handleGenerate}
-                            className="bg-primary text-primary-foreground p-2 rounded-full shadow-md hover:bg-primary/90 transition-all flex items-center justify-center h-8 w-8"
+                            className="bg-primary text-primary-foreground p-2 rounded-full shadow-md hover:bg-primary/90 transition-all flex items-center justify-center h-8 w-8 ml-1"
                             title="Generate Response"
                         >
                             <ArrowRight className="h-4 w-4" />
@@ -692,7 +698,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         // Store has undo (zundo), so accidental delete is fine.
                         deleteNode(id);
                     }}
-                    className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                    className="p-1.5 text-muted-foreground/60 group-hover:opacity-40 hover:!opacity-100 hover:text-red-500 transition-all"
                     title="Delete Node"
                 >
                     <X className="h-4 w-4" />
