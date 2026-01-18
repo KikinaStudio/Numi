@@ -29,6 +29,8 @@ export async function POST(req: Request) {
                 messages: [
                     { role: 'user', content: prompt }
                 ],
+                // OpenRouter specific: indicate we expect an image back
+                modalities: ["image", "text"],
             }),
         });
 
@@ -49,25 +51,34 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Failed to parse provider response' }, { status: 500 });
         }
 
-        const content = data.choices?.[0]?.message?.content;
-
-        if (!content) {
-            console.error('[Image API] Missing content. Full structure keys:', Object.keys(data));
-            if (data.choices?.[0]) {
-                console.error('[Image API] Choice keys:', Object.keys(data.choices[0]));
-                console.error('[Image API] Message keys:', Object.keys(data.choices[0].message || {}));
-            }
-            return NextResponse.json({ error: 'No content returned from provider' }, { status: 500 });
+        const message = data.choices?.[0]?.message;
+        if (!message) {
+            return NextResponse.json({ error: 'No message in response' }, { status: 500 });
         }
 
-        // Extract URL from markdown format if present: ![desc](url)
-        // Note: If content IS the base64 url, match will check it but fail, falling back to usage as url.
-        const markdownMatch = content.match(/\!\[.*?\]\((.*?)\)/);
-        const url = markdownMatch ? markdownMatch[1] : content;
+        // OpenRouter Flux returns image in several possible non-standard fields:
+        // 1. message.content (Standard)
+        // 2. message.url (Direct)
+        // 3. message.image_url.url
+        // 4. message.images[0].image_url.url
+        const url = message.content ||
+            message.url ||
+            message.image_url?.url ||
+            message.images?.[0]?.image_url?.url ||
+            message.images?.[0]?.url;
+
+        if (!url) {
+            console.error('[Image API] Missing Image Data. Keys:', Object.keys(message));
+            return NextResponse.json({ error: 'No image content returned from provider' }, { status: 500 });
+        }
+
+        // If it's markdown, extract it. If it's raw base64/url, use it.
+        const markdownMatch = typeof url === 'string' ? url.match(/\!\[.*?\]\((.*?)\)/) : null;
+        const finalUrl = markdownMatch ? markdownMatch[1] : url;
 
         // Return in OpenAI Image format for frontend compatibility
         return NextResponse.json({
-            data: [{ url: url }]
+            data: [{ url: finalUrl }]
         });
 
     } catch (error: any) {
