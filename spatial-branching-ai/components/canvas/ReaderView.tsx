@@ -11,6 +11,29 @@ import { useChat } from '@/lib/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+// Helper for consistent colors (duplicated from ConversationNode for strict isolation)
+const USER_COLORS = [
+    '#FF6B6B', // Red
+    '#4ECDC4', // Teal
+    '#45B7D1', // Cyan
+    '#96CEB4', // Sage
+    '#FFEEAD', // Cream
+    '#D4A5A5', // Dusty Rose
+    '#9B59B6', // Purple
+    '#3498DB', // Blue
+    '#E67E22', // Orange
+    '#2ECC71', // Green
+];
+
+const getFallbackColor = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash % USER_COLORS.length);
+    return USER_COLORS[index];
+};
+
 export const ReaderView = () => {
     const readingNodeId = useCanvasStore(state => state.readingNodeId);
     const setReadingNodeId = useCanvasStore(state => state.setReadingNodeId);
@@ -72,12 +95,6 @@ export const ReaderView = () => {
     // Detect new Assistant response (when reading node is a User Node and has a new child)
     useEffect(() => {
         if (!readingNodeId) return;
-        const currentNode = nodes.find(n => n.id === readingNodeId);
-
-        // If we are looking at a User node that just finished generating (or is generating),
-        // we might want to switch to the answer? 
-        // Actually, `generate` creates the child immediately.
-        // We need to find if there is a child attached to the current reading node.
 
         const childNode = nodes.find(n => n.data.parentId === readingNodeId);
         if (childNode && childNode.data.role === 'assistant') {
@@ -85,9 +102,6 @@ export const ReaderView = () => {
             setReadingNodeId(childNode.id);
         }
     }, [nodes, readingNodeId, setReadingNodeId]);
-
-
-
 
     // Handle Closing
     useEffect(() => {
@@ -123,7 +137,6 @@ export const ReaderView = () => {
         }
     }, [readingNodeId, setTextSelection, setContextMenu]);
 
-
     if (!readingNodeId || thread.length === 0) return null;
 
     return (
@@ -139,7 +152,7 @@ export const ReaderView = () => {
                 }}
             >
                 <div
-                    className="relative w-full max-w-3xl py-24 px-6 md:px-12 flex flex-col min-h-screen"
+                    className="relative w-full max-w-5xl py-24 px-6 md:px-12 flex flex-col min-h-screen"
                     onMouseUp={handleGlobalSelection}
                 >
                     {/* Close Button - Fixed Position */}
@@ -150,37 +163,40 @@ export const ReaderView = () => {
                         <X className="h-6 w-6" />
                     </button>
 
-                    {/* Thread Map */}
+                    {/* Thread Map - Grid Layout */}
                     <div className="space-y-12 flex-1 pb-32">
                         {thread.map((node, index) => {
                             const isUser = node.data.role === 'user';
                             const isLast = index === thread.length - 1;
+                            const authorName = isUser ? (node.data.authorName || 'User') : 'Numi';
+
+                            // Color Logic
+                            const authorColor = isUser ? (node.data.authorColor || getFallbackColor(authorName)) : undefined;
 
                             return (
                                 <motion.div
                                     key={node.id}
-                                    layoutId={isLast ? `node-content-${node.id}` : undefined} // Only animate the last one from canvas to avoid chaos
+                                    layoutId={isLast ? `node-content-${node.id}` : undefined}
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.05 }}
-                                    className={cn(
-                                        "group relative",
-                                        isUser ? "pl-0" : "pl-0"
-                                    )}
+                                    className="group relative grid grid-cols-[1fr] md:grid-cols-[120px_1fr] gap-2 md:gap-8 items-start"
                                     data-node-id={node.id}
                                 >
-                                    {/* Minimal Header */}
-                                    <div className="flex items-center gap-3 mb-4 opacity-40 group-hover:opacity-100 transition-opacity select-none">
-                                        <div className={cn(
-                                            "w-2 h-2 rounded-full",
-                                            isUser ? "bg-foreground" : "bg-primary"
-                                        )} />
-                                        <span className="text-xs font-medium uppercase tracking-widest">
-                                            {isUser ? (node.data.authorName || 'User') : 'Numi'}
-                                        </span>
+                                    {/* Left Column: Author Name */}
+                                    <div className="md:text-right pt-1.5 select-none sticky top-24">
+                                        <div
+                                            className={cn(
+                                                "text-[11px] font-bold uppercase tracking-[0.2em] leading-none transition-colors duration-300",
+                                                !isUser && "text-muted-foreground/40"
+                                            )}
+                                            style={isUser && authorColor ? { color: authorColor } : {}}
+                                        >
+                                            {authorName}
+                                        </div>
                                     </div>
 
-                                    {/* Content */}
+                                    {/* Right Column: Content */}
                                     <div className={cn(
                                         "prose prose-lg dark:prose-invert max-w-none prose-headings:font-normal prose-p:leading-loose",
                                         "font-serif md:font-sans md:text-xl text-foreground/90",
@@ -190,7 +206,7 @@ export const ReaderView = () => {
                                             remarkPlugins={[remarkGfm]}
                                             rehypePlugins={[rehypeRaw]}
                                             components={{
-                                                p: ({ children }) => <p className="mb-6">{children}</p>,
+                                                p: ({ children }) => <p className="mb-6 last:mb-0">{children}</p>, // Zero margin on last P for tidiness
                                                 code({ className, children, ...props }) {
                                                     const match = /language-(\w+)/.exec(className || '');
                                                     return match ? (
@@ -212,8 +228,8 @@ export const ReaderView = () => {
                         <div ref={threadEndRef} />
                     </div>
 
-                    {/* Reply Input Area */}
-                    <div className="relative mt-8">
+                    {/* Minimal Reply Input Area */}
+                    <div className="relative mt-8 md:ml-[152px]"> {/* Align with right column (120px + 32px gap) */}
                         <div className="relative">
                             <textarea
                                 value={replyContent}
@@ -225,25 +241,23 @@ export const ReaderView = () => {
                                     }
                                 }}
                                 placeholder="Continue the conversation..."
-                                className="w-full bg-muted/30 hover:bg-muted/50 focus:bg-background border border-transparent focus:border-border rounded-xl px-4 py-4 pr-12 text-lg resize-none outline-none transition-all placeholder:text-muted-foreground/40 min-h-[60px] max-h-[200px]"
+                                autoFocus
+                                className="w-full bg-transparent border-none outline-none text-xl resize-none placeholder:text-muted-foreground/30 font-serif min-h-[60px]"
                                 rows={1}
-                                style={{ height: 'auto', minHeight: '60px' }}
+                                style={{ height: 'auto' }}
                             />
                             <Button
                                 size="icon"
                                 onClick={() => handleReply()}
                                 disabled={!replyContent.trim()}
                                 className={cn(
-                                    "absolute bottom-3 right-3 h-8 w-8 rounded-full transition-all",
+                                    "absolute bottom-2 -right-12 h-8 w-8 rounded-full transition-all", // Floating to the right
                                     replyContent.trim() ? "bg-primary text-primary-foreground" : "bg-transparent text-muted-foreground opacity-0 pointer-events-none"
                                 )}
                             >
                                 <ArrowUp className="h-5 w-5" />
                             </Button>
                         </div>
-                        <p className="text-center text-xs text-muted-foreground/30 mt-4 font-mono">
-                            Numi Reader Mode
-                        </p>
                     </div>
 
                 </div>

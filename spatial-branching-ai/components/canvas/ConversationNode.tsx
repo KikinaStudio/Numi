@@ -699,7 +699,7 @@ function ConversationNodeComponent(props: NodeProps) {
                             e.stopPropagation();
                             setReadingNodeId(id);
                         }}
-                        className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground/60 opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-foreground transition-all"
+                        className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground/60 opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-foreground transition-all p-0 leading-none"
                         title="Reader Mode"
                     >
                         <Maximize2 className="h-4 w-4" />
@@ -712,7 +712,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         // Store has undo (zundo), so accidental delete is fine.
                         deleteNode(id);
                     }}
-                    className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground/60 opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-red-500 transition-all"
+                    className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground/60 opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-red-500 transition-all p-0 leading-none"
                     title="Delete Node"
                 >
                     <X className="h-4 w-4" />
