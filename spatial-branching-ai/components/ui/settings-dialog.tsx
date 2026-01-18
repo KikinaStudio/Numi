@@ -5,29 +5,39 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSettingsStore, MODELS } from '@/lib/stores/settings-store';
-import { useCanvasStore } from '@/lib/stores/canvas-store';
-import { Eye, EyeOff, Sun, Moon, ChevronRight, ChevronDown, User, KeyRound } from 'lucide-react';
+import { useCanvasStore, USER_COLORS } from '@/lib/stores/canvas-store';
+import { Eye, EyeOff, Sun, Moon, ChevronRight, ChevronDown, User, KeyRound, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-    const { apiKeys, setApiKey, defaultModel, setDefaultModel, theme, setTheme, userName, setUserName, userId, setUserDetails } = useSettingsStore();
+    const { apiKeys, setApiKey, defaultModel, setDefaultModel, theme, setTheme, userName, setUserName, userId, setUserDetails, userColor } = useSettingsStore();
 
     // Local state for masking and advanced toggle
     const [showKey, setShowKey] = useState<Record<string, boolean>>({});
     const [showAdvanced, setShowAdvanced] = useState(false);
 
-    // Name input state (local to dialog, syncs on blur/enter)
+    // Profile input state (local to dialog, syncs on blur/enter)
     const [localName, setLocalName] = useState(userName || '');
+    const [localColor, setLocalColor] = useState(userColor || USER_COLORS[0]);
 
-    // Handle user name updates to store and collaborators
-    const updateName = () => {
-        if (localName.trim() && localName !== userName) {
-            setUserName(localName);
+    // Handle user profile updates to store and collaborators
+    const updateProfile = (name: string, color: string) => {
+        let changed = false;
+        if (name.trim() && name !== userName) {
+            setUserName(name);
+            changed = true;
+        }
+        if (color && color !== userColor) {
+            setUserDetails({ color }); // Helper to set details
+            changed = true;
+        }
+
+        if (changed || color !== userColor || name !== userName) {
             // Also update for live collaboration immediately
             if (userId) {
                 const me = useCanvasStore.getState().me;
                 if (me) {
-                    const updatedMe = { ...me, name: localName };
+                    const updatedMe = { ...me, name: name || me.name, color: color || me.color };
                     useCanvasStore.getState().setMe(updatedMe);
                     useCanvasStore.getState().updateCollaborator(userId, updatedMe);
                 }
@@ -63,18 +73,42 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                             Profile
                         </label>
-                        <div className="relative">
-                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                <User className="h-4 w-4" />
+                        <div className="flex gap-3">
+                            <div className="relative flex-1">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                    <User className="h-4 w-4" />
+                                </div>
+                                <Input
+                                    value={localName}
+                                    onChange={(e) => setLocalName(e.target.value)}
+                                    onBlur={() => updateProfile(localName, localColor)}
+                                    onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                                    placeholder="Enter your name"
+                                    className="pl-9 font-medium"
+                                />
                             </div>
-                            <Input
-                                value={localName}
-                                onChange={(e) => setLocalName(e.target.value)}
-                                onBlur={updateName}
-                                onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                                placeholder="Enter your name"
-                                className="pl-9 font-medium"
-                            />
+                        </div>
+
+                        {/* Color Picker */}
+                        <div className="flex items-center gap-2">
+                            {USER_COLORS.map((color) => (
+                                <button
+                                    key={color}
+                                    onClick={() => {
+                                        setLocalColor(color);
+                                        updateProfile(localName, color);
+                                    }}
+                                    className={cn(
+                                        "w-8 h-8 rounded-full border border-black/10 flex items-center justify-center transition-all hover:scale-110",
+                                        localColor === color ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+                                    )}
+                                    style={{ backgroundColor: color }}
+                                >
+                                    {localColor === color && (
+                                        <Check className="h-4 w-4 text-white drop-shadow-md" strokeWidth={3} />
+                                    )}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
