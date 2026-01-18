@@ -434,7 +434,12 @@ Do not add any other text before or after.`;
             // Small delay to ensure the store has processed the last node update
             setTimeout(async () => {
                 const { treeName, setTreeName } = useCanvasStore.getState();
-                if (!treeName || treeName === 'Untitled Conversation') {
+                const isUntitled = !treeName ||
+                    treeName === 'Untitled Conversation' ||
+                    treeName.startsWith('Untitled Tree');
+
+                if (isUntitled) {
+                    console.log('🤖 Auto-naming tree triggered...');
                     try {
                         // Find the user prompt that triggered this response
                         const context = getConversationContext(nodeId);
