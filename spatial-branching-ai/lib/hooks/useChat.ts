@@ -452,9 +452,10 @@ Do not add any other text before or after.`;
                             const namingPrompt = `Summarize this conversation topic in 3 words or less. strictly 3 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
 
                             const namingModels = [
-                                'google/gemini-2.0-flash-exp:free',
-                                'meta-llama/llama-3.2-3b-instruct:free',
-                                'microsoft/phi-3-mini-128k-instruct:free'
+                                'google/gemini-2.0-flash-exp:free', // Primary: Fast & Smart
+                                'meta-llama/llama-3.2-3b-instruct:free', // Backup 1: Reliable
+                                'liquid/lfm-40b:free', // Backup 2: Strong reasoning
+                                'google/gemini-2.0-flash-thinking-exp:free' // Backup 3: Alternative
                             ];
 
                             for (const model of namingModels) {
