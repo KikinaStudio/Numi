@@ -452,10 +452,10 @@ Do not add any other text before or after.`;
                             const namingPrompt = `Summarize this conversation topic in 3 words or less. strictly 3 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
 
                             const namingModels = [
-                                'google/gemini-2.0-flash-exp:free', // Primary: Fast & Smart
-                                'meta-llama/llama-3.2-3b-instruct:free', // Backup 1: Reliable
-                                'meta-llama/llama-3-8b-instruct:free', // Backup 2: Solid
-                                'huggingfaceh4/zephyr-7b-beta:free' // Backup 3: Old faithful
+                                'google/gemini-2.0-flash-exp:free', // Primary
+                                'mistralai/mistral-7b-instruct:free', // Reliable
+                                'meta-llama/llama-3.2-3b-instruct:free', // Backup
+                                'openchat/openchat-7b:free' // Deep Backup
                             ];
 
                             for (const model of namingModels) {
@@ -483,7 +483,7 @@ Do not add any other text before or after.`;
                                             setTreeName(newTitle);
                                             break; // Success! Stop trying other models
                                         } else {
-                                            console.warn(`⚠️ Auto-naming empty response from ${model}`);
+                                            console.warn(`⚠️ Auto-naming empty response from ${model}. Data:`, JSON.stringify(data));
                                         }
                                     } else {
                                         console.warn(`⚠️ Auto-naming failed with ${model}:`, await nameResponse.text());
