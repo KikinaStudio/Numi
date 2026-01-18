@@ -359,7 +359,10 @@ Do not add any other text before or after.`;
                         })
                     });
 
-                    if (!imgRes.ok) throw new Error('Image API failed');
+                    if (!imgRes.ok) {
+                        const errData = await imgRes.json().catch(() => ({}));
+                        throw new Error(errData.error || `Image API failed with status ${imgRes.status}`);
+                    }
 
                     const imgData = await imgRes.json();
                     const imageUrl = imgData.data?.[0]?.url;
