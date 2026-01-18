@@ -471,7 +471,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         <TooltipTrigger asChild>
                             <div
                                 className={cn(
-                                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0 overflow-hidden",
+                                    "h-7 w-7 rounded-xl flex items-center justify-center text-[10px] font-extrabold text-white shadow-sm ring-1 ring-white/10 shrink-0 overflow-hidden",
                                     isAssistant && "bg-primary",
                                     // Override background for Numi Standard to be black to match the logo file
                                     isAssistant && !nodeData.selectedPersonaId && "bg-black"
@@ -670,7 +670,7 @@ function ConversationNodeComponent(props: NodeProps) {
 
                         <button
                             onClick={handleGenerate}
-                            className="bg-primary text-primary-foreground p-2 rounded-full shadow-md hover:bg-primary/90 transition-all flex items-center justify-center h-8 w-8 ml-1"
+                            className="bg-primary text-primary-foreground p-2 rounded-xl shadow-md hover:bg-primary/90 transition-all flex items-center justify-center h-8 w-8 ml-1"
                             title="Generate Response"
                         >
                             <ArrowRight className="h-4 w-4" />
@@ -683,7 +683,7 @@ function ConversationNodeComponent(props: NodeProps) {
                     <div className="absolute bottom-2 right-2 flex justify-end z-10 transition-opacity">
                         <button
                             onClick={handleReply}
-                            className="bg-accent text-accent-foreground p-2 rounded-full shadow-md hover:bg-accent/90 transition-all flex items-center justify-center h-8 w-8 border border-border"
+                            className="bg-accent text-accent-foreground p-2 rounded-xl shadow-md hover:bg-accent/90 transition-all flex items-center justify-center h-8 w-8 border border-border"
                             title="Reply"
                         >
                             <Reply className="h-4 w-4" />
