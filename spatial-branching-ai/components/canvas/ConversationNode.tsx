@@ -413,6 +413,23 @@ function ConversationNodeComponent(props: NodeProps) {
                     </div>
                 )}
 
+                {/* Interactive Reply Overlay - Visible on Hover */}
+                {!nodeData.isGenerating && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-30">
+                        {/* We use pointer-events-auto on the button itself so the rest of the image remains drag-friendly */}
+                        <div className="absolute bottom-3 right-12 pointer-events-auto scale-90 hover:scale-100 transition-transform">
+                            <button
+                                onClick={handleReply}
+                                className="bg-background/80 backdrop-blur-md text-foreground p-2 rounded-full shadow-lg border border-white/10 hover:bg-background transition-colors flex items-center gap-2 px-4"
+                                title="Reply to this"
+                            >
+                                <Reply className="h-4 w-4" />
+                                <span className="text-xs font-bold">Reply</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Media Type Badge */}
                 {(() => {
                     let label = 'FILE';
