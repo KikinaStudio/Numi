@@ -45,6 +45,7 @@ export async function POST(req: Request) {
         }
 
         const data = await response.json();
+        console.log('[Image API Response]', JSON.stringify(data, null, 2));
         const content = data.choices?.[0]?.message?.content;
 
         if (!content) {
