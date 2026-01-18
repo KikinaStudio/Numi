@@ -71,6 +71,7 @@ export function usePersistence() {
     const dbChannelRef = useRef<any>(null);
     const presenceChannelRef = useRef<any>(null);
     const activeSubIdRef = useRef<number>(0);
+    const lastNodeUpdateAtRef = useRef<Record<string, number>>({});
 
     // Serialize current state to detect changes
     const serializeState = useCallback((nodes: ConversationNode[], edges: Edge[], name: string) => {
@@ -268,6 +269,12 @@ export function usePersistence() {
                 if (edgesError) throw edgesError;
             }
 
+            // Record save time for each node to prevent stale echoes
+            const now = Date.now();
+            validNodes.forEach(node => {
+                lastNodeUpdateAtRef.current[node.id] = now;
+            });
+
             lastSavedRef.current = currentState;
             setSyncStatus('synced');
         } catch (error: any) {
@@ -443,6 +450,17 @@ export function usePersistence() {
                         const currentState = useCanvasStore.getState();
                         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                             const node = payload.new as DbNode;
+
+                            // SYNC GUARD: Ignore if this update is older than our last local save
+                            const remoteUpdateAt = new Date(node.updated_at).getTime();
+                            const localLastUpdate = lastNodeUpdateAtRef.current[node.id] || 0;
+
+                            // Allow a small margin (500ms) for clock drift, but generally ignore stale echoes
+                            if (remoteUpdateAt < localLastUpdate - 500) {
+                                console.log(`⏳ [Realtime] Skipping stale update for node ${node.id}`);
+                                return;
+                            }
+
                             const flowNode: ConversationNode = {
                                 id: node.id,
                                 type: 'conversation',

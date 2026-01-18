@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { useCanvasStore } from '@/lib/stores/canvas-store';
+import { supabase } from '@/lib/supabase/client';
 
 import { useSettingsStore, MODELS } from '@/lib/stores/settings-store';
 import { PERSONAS } from '@/lib/config/personas';
@@ -40,7 +41,14 @@ export function useChat(options: UseChatOptions = {}) {
     }, []);
 
     // Generate response for a node
-    const generate = useCallback(async (nodeId: string): Promise<string> => {
+    const generate = useCallback(async (nodeId: string, onProgress?: (content: string) => void): Promise<string> => {
+        // determine saveTree from hook or store indirectly?
+        // Actually, we can just trigger window.dispatchEvent or similar,
+        // but better to just let the debounced save handle it now that we have sync guards.
+        // Or, we can just import saveTree from usePersistence if we call it inside? No.
+
+        // I'll add an optional saveCallback to generate.
+
         // Determine effective model and key
         const activeModel = options.model || defaultModel;
         const provider = MODELS.find(m => m.id === activeModel)?.provider || 'openrouter';
@@ -369,41 +377,44 @@ Do not add any other text before or after.`;
 
                     if (!imageUrl) throw new Error('No image URL returned');
 
-                    // Proxy fetch to Blob (to bypass CORS and persist)
-                    // We can try fetching directly first, if it fails we might need a proxy route.
-                    // OpenRouter/Flux usually returns a public URL.
-                    const imageBlobRes = await fetch(imageUrl);
-                    const imageBlob = await imageBlobRes.blob();
+                    // 1. Fetch the image as a blob
+                    const imgBlobRes = await fetch(imageUrl);
+                    const blob = await imgBlobRes.blob();
 
-                    // Upload to Supabase using the existing helper we'd simulate here or just direct upload functionality?
-                    // We don't have direct access to handleFileUpload here easily without refactoring.
-                    // But we can reproduce the upload logic if we have the supabase client.
-                    // Actually, let's use a simpler approach: Just store the URL if it's permanent (it's usually not).
-                    // We really need to persist it.
-                    // Accessing Supabase client from here might require importing it.
-                    // Let's import createClient from component-level or reuse what `handleFileUpload` does.
-                    // Wait, `useCanvasStore` doesn't expose upload logic.
-                    // We'll trust the URL implementation for V1, OR verify persistence later.
-                    // FIX: OpenRouter URLs expire. We MUST persist.
+                    // 2. Upload to Supabase Storage
+                    const fileName = `generated/${nodeId}-${Date.now()}.png`;
+                    let finalUrl = imageUrl;
 
-                    // Let's assume we can upload via a standard `uploadFile` helper if we check `BranchingCanvas`.
-                    // Since I can't easily access the Supabase client here without context, 
-                    // I will create a temporary workaround: Save the remote URL.
-                    // TODO: UPGRADE TO PERSISTENCE IN NEXT STEP once I confirm the hook structure.
+                    if (supabase) {
+                        const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('files')
+                            .upload(fileName, blob, {
+                                contentType: 'image/png',
+                                cacheControl: '3600',
+                                upsert: true
+                            });
 
-                    // For now, let's try to update the node with the URL.
+                        if (uploadError) {
+                            console.warn('[Image Gen] Upload to Supabase failed, falling back to remote URL:', uploadError);
+                        } else {
+                            const { data: { publicUrl } } = supabase.storage
+                                .from('files')
+                                .getPublicUrl(fileName);
+                            finalUrl = publicUrl;
+                            console.log('[Image Gen] Persistent URL created:', finalUrl);
+                        }
+                    }
+
                     // Update node with image data (Flattened structure)
-                    // Note: updateNode merges into node.data
                     updateNode(nodeId, {
-                        content: `[Generated Image: ${imagePrompt}]`,
-                        fileUrl: imageUrl, 
-                        fileName: `generated-${Date.now()}.png`,
+                        content: imagePrompt,
+                        fileUrl: finalUrl,
+                        fileName: `generated-${nodeId.substring(0, 4)}.png`,
                         mimeType: 'image/png',
                         role: 'assistant',
                         isGenerated: true,
                         isGenerating: false,
-                        // Preserve previous data if needed, but updateNode handles partial updates
-                        // ...nodeToCheck?.data is not needed here as zustand immer merges it
+                        label: 'inferred',
                     });
 
                 } catch (imgError: any) {
