@@ -215,7 +215,7 @@ export function useChat(options: UseChatOptions = {}) {
         let targetModel = activeModel; // Default
 
         if (hasVideo || hasImages) {
-            targetModel = 'nvidia/nemotron-nano-12b-v2-vl:free';
+            targetModel = 'google/gemini-2.0-flash-exp:free';
         } else {
             targetModel = 'xiaomi/mimo-v2-flash:free';
         }
@@ -263,8 +263,9 @@ STYLE: Keep it short and to the point.`;
 
         try {
             console.log('[Vision Debug] Has Images:', hasImages);
-            console.log('[Vision Debug] Model:', hasImages ? 'nvidia/nemotron-nano-12b-v2-vl:free' : activeModel);
+            console.log('[Vision Debug] Model:', hasImages ? 'google/gemini-2.0-flash-exp:free' : activeModel);
             console.log('[Vision Debug] Last Message Content:', JSON.stringify(validMessages[validMessages.length - 1]?.content, null, 2));
+            console.log('[Vision Debug] Payload Size (approx):', JSON.stringify(validMessages).length);
 
             const response = await fetch('/api/chat', {
                 method: 'POST',

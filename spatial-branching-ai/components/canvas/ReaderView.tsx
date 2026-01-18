@@ -242,7 +242,7 @@ export const ReaderView = () => {
                                 }}
                                 placeholder="Continue the conversation..."
                                 autoFocus
-                                className="w-full bg-transparent border-none outline-none text-xl resize-none placeholder:text-muted-foreground/30 font-serif min-h-[60px]"
+                                className="w-full bg-transparent border-none outline-none text-xl resize-none placeholder:text-muted-foreground/30 min-h-[60px]"
                                 rows={1}
                                 style={{ height: 'auto' }}
                             />

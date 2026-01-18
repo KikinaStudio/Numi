@@ -589,8 +589,8 @@ function ConversationNodeComponent(props: NodeProps) {
                             !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "max-h-[120px] overflow-hidden"
                         )}
                         style={!selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl ? {
-                            WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                            maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                            maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)'
                         } : {}}
                     >
                         {
