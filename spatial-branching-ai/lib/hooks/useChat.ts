@@ -213,17 +213,34 @@ export function useChat(options: UseChatOptions = {}) {
             .filter(m => m !== null)
             .reverse(); // Restore chronological
 
+        // --- CONSOLIDATE CONSECUTIVE ROLES ---
+        // Many APIs (OpenRouter, Google) fail if roles don't alternate (User -> Assistant -> User).
+        // We merge consecutive messages of the same role into a single message with combined content.
+        const consolidatedMessages: any[] = [];
+        validMessages.forEach((msg: any) => {
+            if (consolidatedMessages.length > 0 && consolidatedMessages[consolidatedMessages.length - 1].role === msg.role) {
+                const prev = consolidatedMessages[consolidatedMessages.length - 1];
+                if (Array.isArray(prev.content) && Array.isArray(msg.content)) {
+                    prev.content = [...prev.content, ...msg.content];
+                }
+            } else {
+                consolidatedMessages.push(msg);
+            }
+        });
+
+        const finalMessages = consolidatedMessages;
+
         // Loop again to check if we now have specific media types
-        const hasImages = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
+        const hasImages = finalMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url'));
         // Check for our text-based markers
-        const hasAudio = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Audio File:')));
-        const hasVideo = validMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Video Input:')));
+        const hasAudio = finalMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Audio File:')));
+        const hasVideo = finalMessages.some(m => Array.isArray(m.content) && m.content.some((c: any) => c.type === 'text' && c.text.includes('[Video Input:')));
 
         // Determine the best model for this request (Multi-modal Strategy)
         let targetModel = activeModel; // Default
 
         if (hasVideo || hasImages) {
-            targetModel = 'allenai/molmo-2-8b:free';
+            targetModel = 'google/gemini-2.0-flash-exp:free';
         } else {
             targetModel = 'xiaomi/mimo-v2-flash:free';
         }
@@ -265,12 +282,12 @@ Do not add any other text before or after.`;
         const finalSystemPrompt = `${globalSystemPrompt}\n\nCURRENT ROLE/MODE:\n${specificPersonPrompt}`;
 
         // Prepend system prompt at the VERY beginning
-        validMessages = [
+        const combinedMessages = [
             { role: 'system', content: finalSystemPrompt } as any,
-            ...validMessages
+            ...finalMessages
         ];
 
-        if (validMessages.length === 0) {
+        if (combinedMessages.length === 0) {
             throw new Error('No valid messages in conversation context');
         }
 
@@ -279,9 +296,9 @@ Do not add any other text before or after.`;
 
         try {
             console.log('[Vision Debug] Has Images:', hasImages);
-            console.log('[Vision Debug] Model:', hasImages ? 'allenai/molmo-2-8b:free' : activeModel);
-            console.log('[Vision Debug] Last Message Content:', JSON.stringify(validMessages[validMessages.length - 1]?.content, null, 2));
-            console.log('[Vision Debug] Payload Size (approx):', JSON.stringify(validMessages).length);
+            console.log('[Vision Debug] Model:', targetModel);
+            console.log('[Vision Debug] Last Message Content:', JSON.stringify(combinedMessages[combinedMessages.length - 1]?.content, null, 2));
+            console.log('[Vision Debug] Payload Size (approx):', JSON.stringify(combinedMessages).length);
 
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -289,7 +306,7 @@ Do not add any other text before or after.`;
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    messages: validMessages,
+                    messages: combinedMessages,
                     model: targetModel,
                     apiKey: targetApiKey,
                     provider: targetProvider,
