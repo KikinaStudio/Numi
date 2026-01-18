@@ -456,9 +456,9 @@ Do not add any other text before or after.`;
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     messages: [{ role: 'user', content: namingPrompt }],
-                                    model: 'xiaomi/mimo-v2-flash:free',
+                                    model: 'google/gemini-2.0-flash-exp:free',
                                     apiKey: apiKeys.openrouter,
-                                    provider: 'openrouter',
+                                    provider: 'openrouter', // OpenRouter handles Gemini too
                                     temperature: 0.3,
                                     stream: false,
                                 }),
@@ -466,10 +466,14 @@ Do not add any other text before or after.`;
 
                             if (nameResponse.ok) {
                                 const data = await nameResponse.json();
-                                const newTitle = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, '');
+                                const rawTitle = data.choices?.[0]?.message?.content || '';
+                                const newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
+                                console.log('🏷️ Auto-named tree:', newTitle);
                                 if (newTitle) {
                                     setTreeName(newTitle);
                                 }
+                            } else {
+                                console.error('❌ Auto-naming failed:', await nameResponse.text());
                             }
                         }
                     } catch (error) {
