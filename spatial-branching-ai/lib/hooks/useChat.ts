@@ -354,7 +354,13 @@ Do not add any other text before or after.`;
             if (isImageGeneration) {
                 const imagePrompt = fullContent.replace('<<GENERATE_IMAGE>>:', '').trim();
                 console.log('[Image Gen] Detected prompt:', imagePrompt);
-                updateNode(nodeId, { content: '🎨 Painting...' });
+
+                // Initial "Generating" state with UI feedback
+                updateNode(nodeId, {
+                    content: 'Génération d\'image...',
+                    mimeType: 'image/generating',
+                    isGenerating: true
+                });
 
                 try {
                     const imgRes = await fetch('/api/image', {

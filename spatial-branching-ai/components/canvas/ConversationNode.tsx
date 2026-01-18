@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
-import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
+import { Handle, Position, NodeProps } from '@xyflow/react';
 import { useReactFlow } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
@@ -304,6 +304,27 @@ function ConversationNodeComponent(props: NodeProps) {
         }
     }, [id, createChildNode, selectNode]);
 
+    // --- IMAGE GENERATION LOADER ---
+    if (nodeData.mimeType === 'image/generating') {
+        return (
+            <div
+                className={cn(
+                    'relative group rounded-2xl transition-all duration-300',
+                    'p-4 bg-muted border flex items-center gap-3 text-sm shadow-sm',
+                    selected ? 'ring-1 ring-primary/30' : ''
+                )}
+            >
+                <div className="h-4 w-4 flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+                <span className="text-muted-foreground font-medium">Génération d'image...</span>
+
+                {/* Standard Handles */}
+                <NodeHandles id={id} />
+            </div>
+        );
+    }
+
     // --- MINIMAL MEDIA VIEW (Image / Audio / Video) ---
     if (nodeData.fileUrl) {
         const isPdf = nodeData.mimeType === 'application/pdf';
@@ -323,29 +344,13 @@ function ConversationNodeComponent(props: NodeProps) {
                     // Minimal selection indicator (no heavy ring)
                     selected ? 'scale-[1.02] shadow-2xl ring-1 ring-primary/30' : 'hover:scale-[1.01]'
                 )}
-                style={{
-                    width: nodeData.width ?? undefined,
-                    height: nodeData.height ?? undefined,
-                    minWidth: '200px',
-                    minHeight: '100px'
-                }}
             >
-                <NodeResizer
-                    color="#3b82f6"
-                    isVisible={selected}
-                    minWidth={200}
-                    minHeight={100}
-                    onResizeEnd={(_, params) => {
-                        updateNode(id, { width: params.width, height: params.height });
-                    }}
-                />
                 {/* Media Content */}
                 {isImage || isPdf ? (
                     <img
                         src={nodeData.fileUrl}
                         alt={nodeData.fileName}
-
-                        className="rounded-2xl border border-white/10 w-full h-full object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
+                        className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
                     />
                 ) : isAudio ? (
                     <div className="w-[370px] h-20 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center p-4 pr-16 shadow-sm">
@@ -446,26 +451,6 @@ function ConversationNodeComponent(props: NodeProps) {
         );
     }
 
-    // --- IMAGE GENERATING PILL ---
-    if (nodeData.isGenerating && nodeData.generationType === 'image') {
-        return (
-            <div className="absolute top-0 left-0">
-                <div
-                    className={cn(
-                        'relative group transition-all duration-300 ease-in-out rounded-2xl',
-                        'shadow-lg hover:shadow-xl p-4 bg-muted border border-border flex items-center gap-3',
-                        selected && 'ring-1 ring-primary/30'
-                    )}
-                >
-                    <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
-                    <span className="text-sm font-medium text-muted-foreground">Generating image...</span>
-                    {/* Handles - Global Visibility on Connect & Border Straddling */}
-                    <NodeHandles id={id} />
-                </div>
-            </div>
-        );
-    }
-
     // --- STANDARD CONVERSATION BUBBLE ---
     return (
         <div
@@ -477,7 +462,7 @@ function ConversationNodeComponent(props: NodeProps) {
                 'group bg-background/40 rounded-2xl border border-black/5 dark:border-white/10 shadow-sm backdrop-blur-md transition-all duration-500 ease-out relative',
                 'hover:shadow-xl hover:-translate-y-0.5',
                 'w-[450px]',
-                !selected && !isHovered && nodeData.hasChildren && 'w-[250px]',
+                // !selected && !isHovered && nodeData.hasChildren && 'w-[250px]', // PAUSED: Auto-collapse disabled
                 selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
                 (isHovered || selected) && 'ring-1 ring-primary/20',
                 nodeData.isGenerating && 'animate-pulse'
@@ -624,15 +609,15 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text nopan nodrag nowheel',
-                            // Padding Logic: Collapsed = minimal padding / Expanded = standard padding
-                            (!selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl)
-                                ? "px-6 py-4 line-clamp-1 min-h-0 h-auto"
-                                : cn("px-6 pb-14 min-h-[100px]", nodeData.branchContext ? "pt-5" : "pt-12"),
-
-                            !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground/70 italic'
+                            'prose-notion select-text cursor-text px-6 pb-14 min-h-[100px] nopan nodrag nowheel',
+                            nodeData.branchContext ? "pt-5" : "pt-12", // Add top padding if no branch context to clear icon
+                            !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground/70 italic',
+                            // !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "max-h-[120px] overflow-hidden" // PAUSED: Auto-collapse disabled
                         )}
-                        style={{}}
+                        style={/* !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl ? {
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                            maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)'
+                        } : */ {}}
                     >
                         {
                             nodeData.content ? (
@@ -644,11 +629,11 @@ function ConversationNodeComponent(props: NodeProps) {
                                 isUser ? (!nodeData.parentId ? "Plant your idea ..." : "Click to type...") : 'Generating...'
                             )
                         }
-                        {!selected && !isHovered && nodeData.hasChildren && (
+                        {/* !selected && !isHovered && nodeData.hasChildren && (
                             <div className="absolute bottom-1 left-0 right-0 flex justify-center pb-1 pointer-events-none">
                                 <div className="h-1.5 w-8 rounded-full bg-muted-foreground/30 animate-pulse" />
                             </div>
-                        )}
+                        ) */}
                     </div>
                 )}
 
