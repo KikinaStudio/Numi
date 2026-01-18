@@ -5,7 +5,17 @@ export const runtime = 'edge';
 
 export async function POST(req: Request) {
     try {
-        const { prompt, apiKey, model } = await req.json();
+        const body = await req.json();
+        let { prompt, apiKey, model } = body;
+
+        // Fallback to server-side env key if not provided by client
+        if (!apiKey) {
+            apiKey = process.env.OPENROUTER_API_KEY;
+        }
+
+        if (!apiKey) {
+            return NextResponse.json({ error: 'OpenRouter API key is missing. Set it in Settings or Environment.' }, { status: 401 });
+        }
 
         if (!prompt) {
             return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
