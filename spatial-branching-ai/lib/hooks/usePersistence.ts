@@ -56,6 +56,8 @@ export function usePersistence() {
     // Only grab stable things and the minimum reactive ones
     const treeId = useCanvasStore(state => state.treeId);
     const treeName = useCanvasStore(state => state.treeName);
+    const nodes = useCanvasStore(state => state.nodes);
+    const edges = useCanvasStore(state => state.edges);
     const syncStatus = useCanvasStore(state => state.syncStatus);
     const setSyncStatus = useCanvasStore(state => state.setSyncStatus);
     const setTreeId = useCanvasStore(state => state.setTreeId);
@@ -394,7 +396,7 @@ export function usePersistence() {
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [useCanvasStore.getState().nodes, useCanvasStore.getState().edges, useCanvasStore.getState().treeName, saveTree, setSyncStatus, syncStatus]);
+    }, [nodes, edges, treeName, saveTree, setSyncStatus, syncStatus]);
 
     // 1. INITIAL LOAD FROM URL - Run once on mount
     useEffect(() => {
