@@ -1,5 +1,5 @@
-
 import { NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
 // export const runtime = 'edge'; // Disabled to support large Base64 responses
 
@@ -21,34 +21,27 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
         }
 
-        // OpenRouter uses the CHAT endpoint for images with Flux
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
+        const openai = new OpenAI({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: apiKey,
+            defaultHeaders: {
                 'HTTP-Referer': 'https://numi.app',
                 'X-Title': 'Numi',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: model || 'black-forest-labs/flux.2-klein-4b',
-                messages: [
-                    { role: 'user', content: prompt }
-                ],
-            }),
+            }
         });
 
-        if (!response.ok) {
-            const text = await response.text();
-            console.error('[Image API Error]', text);
-            return NextResponse.json({ error: `Provider Error: ${text}` }, { status: response.status });
-        }
+        const completion = await openai.chat.completions.create({
+            model: model || 'black-forest-labs/flux.2-klein-4b',
+            messages: [
+                { role: 'user', content: prompt }
+            ],
+            // Ensure no max_tokens limit cuts off the base64
+        });
 
-        const data = await response.json();
-        console.log('[Image API Response]', JSON.stringify(data, null, 2));
-        const content = data.choices?.[0]?.message?.content;
+        const content = completion.choices[0]?.message?.content;
 
         if (!content) {
+            console.error('Available keys:', Object.keys(completion.choices[0]?.message || {}));
             return NextResponse.json({ error: 'No content returned from provider' }, { status: 500 });
         }
 
