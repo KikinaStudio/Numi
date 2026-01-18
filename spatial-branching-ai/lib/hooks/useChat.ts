@@ -451,29 +451,43 @@ Do not add any other text before or after.`;
                         if (firstUserMessage) {
                             const namingPrompt = `Summarize this conversation topic in 3 words or less. strictly 3 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
 
-                            const nameResponse = await fetch('/api/chat', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    messages: [{ role: 'user', content: namingPrompt }],
-                                    model: 'google/gemini-2.0-flash-exp:free',
-                                    apiKey: apiKeys.openrouter,
-                                    provider: 'openrouter', // OpenRouter handles Gemini too
-                                    temperature: 0.3,
-                                    stream: false,
-                                }),
-                            });
+                            const namingModels = [
+                                'google/gemini-2.0-flash-exp:free',
+                                'meta-llama/llama-3.2-3b-instruct:free',
+                                'microsoft/phi-3-mini-128k-instruct:free'
+                            ];
 
-                            if (nameResponse.ok) {
-                                const data = await nameResponse.json();
-                                const rawTitle = data.choices?.[0]?.message?.content || '';
-                                const newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
-                                console.log('🏷️ Auto-named tree:', newTitle);
-                                if (newTitle) {
-                                    setTreeName(newTitle);
+                            for (const model of namingModels) {
+                                try {
+                                    const nameResponse = await fetch('/api/chat', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            messages: [{ role: 'user', content: namingPrompt }],
+                                            model: model,
+                                            apiKey: apiKeys.openrouter,
+                                            provider: 'openrouter',
+                                            temperature: 0.3,
+                                            stream: false,
+                                        }),
+                                    });
+
+                                    if (nameResponse.ok) {
+                                        const data = await nameResponse.json();
+                                        const rawTitle = data.choices?.[0]?.message?.content || '';
+                                        const newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
+
+                                        if (newTitle) {
+                                            console.log(`🏷️ Auto-named tree using ${model}:`, newTitle);
+                                            setTreeName(newTitle);
+                                            break; // Success! Stop trying other models
+                                        }
+                                    } else {
+                                        console.warn(`⚠️ Auto-naming failed with ${model}:`, await nameResponse.text());
+                                    }
+                                } catch (e) {
+                                    console.warn(`⚠️ Auto-naming error with ${model}:`, e);
                                 }
-                            } else {
-                                console.error('❌ Auto-naming failed:', await nameResponse.text());
                             }
                         }
                     } catch (error) {
