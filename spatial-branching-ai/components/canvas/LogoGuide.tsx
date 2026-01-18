@@ -7,7 +7,7 @@ import {
     HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { cn } from '@/lib/utils';
-import { GitBranch, Brain, Zap, Layers, Sparkles, Users, Cloud } from 'lucide-react';
+import { GitBranch, Brain, Zap, Layers, Sparkles, Users, Cloud, Palette } from 'lucide-react';
 
 export function LogoGuide() {
     const theme = useSettingsStore(s => s.theme);
@@ -73,9 +73,21 @@ export function LogoGuide() {
                                 <GitBranch className="h-4 w-4" />
                             </div>
                             <div>
-                                <h4 className="text-sm font-bold mb-0.5">Branching Context</h4>
+                                <h4 className="text-sm font-bold mb-0.5">Thought Branching</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
                                     <span className="font-bold">Select any text</span> or click a node to branch off a new idea instantly without losing flow.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 items-start">
+                            <div className={cn("p-2 rounded-lg shrink-0", isDark ? "bg-zinc-100 text-zinc-900" : "bg-zinc-900 text-zinc-100")}>
+                                <Palette className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold mb-0.5">Image Generation</h4>
+                                <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
+                                    Simply ask for an image (e.g., "Paint me a cat") to generate <span className="font-bold">stunning visuals</span> directly on the canvas.
                                 </p>
                             </div>
                         </div>
@@ -97,9 +109,9 @@ export function LogoGuide() {
                                 <Brain className="h-4 w-4" />
                             </div>
                             <div>
-                                <h4 className="text-sm font-bold mb-0.5">Personas</h4>
+                                <h4 className="text-sm font-bold mb-0.5">AI Roles</h4>
                                 <p className={cn("text-xs opacity-80", isDark ? "text-zinc-600" : "text-zinc-400")}>
-                                    Assign <span className="font-bold">agent</span> roles (Expert, Creative, Critic) to branches for varied perspectives.
+                                    Assign <span className="font-bold">agent Roles</span> (Expert, Creative, Critic) to branches for varied perspectives.
                                 </p>
                             </div>
                         </div>
