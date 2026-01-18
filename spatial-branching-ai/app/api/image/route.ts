@@ -11,21 +11,20 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
         }
 
-        const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
+        // OpenRouter uses the CHAT endpoint for images with Flux
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'HTTP-Referer': 'https://numi.app', // Required by OpenRouter
-                'X-Title': 'Numi', // Required by OpenRouter
+                'HTTP-Referer': 'https://numi.app',
+                'X-Title': 'Numi',
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
                 model: model || 'black-forest-labs/flux.2-klein-4b',
-                prompt: prompt,
-                // Flux models on OpenRouter typically support standard OpenAI image params
-                // But some free providers might return a URL directly or b64.
-                // We'll request 1 image.
-                n: 1,
+                messages: [
+                    { role: 'user', content: prompt }
+                ],
             }),
         });
 
@@ -36,7 +35,20 @@ export async function POST(req: Request) {
         }
 
         const data = await response.json();
-        return NextResponse.json(data);
+        const content = data.choices?.[0]?.message?.content;
+
+        if (!content) {
+            return NextResponse.json({ error: 'No content returned from provider' }, { status: 500 });
+        }
+
+        // Extract URL from markdown format if present: ![desc](url)
+        const markdownMatch = content.match(/\!\[.*?\]\((.*?)\)/);
+        const url = markdownMatch ? markdownMatch[1] : content;
+
+        // Return in OpenAI Image format for frontend compatibility
+        return NextResponse.json({
+            data: [{ url: url }]
+        });
 
     } catch (error: any) {
         console.error('[Image API Exception]', error);
