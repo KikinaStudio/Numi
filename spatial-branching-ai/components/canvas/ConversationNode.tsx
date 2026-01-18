@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, Maximize2, Palette } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, Maximize2, Palette, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -304,16 +304,6 @@ function ConversationNodeComponent(props: NodeProps) {
         }
     }, [id, createChildNode, selectNode]);
 
-    // --- IMAGE GENERATION LOADING STATE ---
-    if (nodeData.isGeneratingImage) {
-        return (
-            <div className="p-3 pr-5 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center gap-3 shadow-sm w-fit">
-                <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
-                <span className="text-xs font-medium text-muted-foreground animate-pulse">Generating image...</span>
-            </div>
-        );
-    }
-
     // --- MINIMAL MEDIA VIEW (Image / Audio / Video) ---
     if (nodeData.fileUrl) {
         const isPdf = nodeData.mimeType === 'application/pdf';
@@ -334,29 +324,28 @@ function ConversationNodeComponent(props: NodeProps) {
                     selected ? 'scale-[1.02] shadow-2xl ring-1 ring-primary/30' : 'hover:scale-[1.01]'
                 )}
                 style={{
-                    width: nodeData.width,
-                    height: nodeData.height,
-                    minWidth: 200,
-                    minHeight: 200
+                    width: nodeData.width ?? undefined,
+                    height: nodeData.height ?? undefined,
+                    minWidth: '200px',
+                    minHeight: '100px'
                 }}
             >
                 <NodeResizer
-                    color="#3B82F6"
+                    color="#3b82f6"
                     isVisible={selected}
                     minWidth={200}
-                    minHeight={200}
+                    minHeight={100}
                     onResizeEnd={(_, params) => {
                         updateNode(id, { width: params.width, height: params.height });
                     }}
-                    handleStyle={{ width: 8, height: 8, borderRadius: 999 }}
                 />
-
                 {/* Media Content */}
                 {isImage || isPdf ? (
                     <img
                         src={nodeData.fileUrl}
                         alt={nodeData.fileName}
-                        className="w-full h-full rounded-2xl border border-white/10 object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
+
+                        className="rounded-2xl border border-white/10 w-full h-full object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
                     />
                 ) : isAudio ? (
                     <div className="w-[370px] h-20 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center p-4 pr-16 shadow-sm">
@@ -453,6 +442,26 @@ function ConversationNodeComponent(props: NodeProps) {
 
                 {/* Handles - Global Visibility on Connect & Border Straddling */}
                 <NodeHandles id={id} />
+            </div>
+        );
+    }
+
+    // --- IMAGE GENERATING PILL ---
+    if (nodeData.isGenerating && nodeData.generationType === 'image') {
+        return (
+            <div className="absolute top-0 left-0">
+                <div
+                    className={cn(
+                        'relative group transition-all duration-300 ease-in-out rounded-2xl',
+                        'shadow-lg hover:shadow-xl p-4 bg-muted border border-border flex items-center gap-3',
+                        selected && 'ring-1 ring-primary/30'
+                    )}
+                >
+                    <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                    <span className="text-sm font-medium text-muted-foreground">Generating image...</span>
+                    {/* Handles - Global Visibility on Connect & Border Straddling */}
+                    <NodeHandles id={id} />
+                </div>
             </div>
         );
     }
@@ -615,14 +624,15 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text px-6 pb-14 min-h-[100px] nopan nodrag nowheel',
-                            nodeData.branchContext ? "pt-5" : "pt-12", // Add top padding if no branch context to clear icon
-                            !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground/70 italic',
-                            !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "h-[80px] overflow-hidden line-clamp-1"
+                            'prose-notion select-text cursor-text nopan nodrag nowheel',
+                            // Padding Logic: Collapsed = minimal padding / Expanded = standard padding
+                            (!selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl)
+                                ? "px-6 py-4 line-clamp-1 min-h-0 h-auto"
+                                : cn("px-6 pb-14 min-h-[100px]", nodeData.branchContext ? "pt-5" : "pt-12"),
+
+                            !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground/70 italic'
                         )}
-                        style={!selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl ? {
-                            // Removing mask for cleaner 1-line look as per request
-                        } : {}}
+                        style={{}}
                     >
                         {
                             nodeData.content ? (

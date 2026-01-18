@@ -24,6 +24,9 @@ export interface ConversationNodeData extends Record<string, unknown> {
     fileName?: string;
     fileContent?: string; // Extracted text content for multimodal documents (PDF, DOCX, etc.)
     fileSize?: number; // Size in bytes
+    width?: number; // Custom width for resizable nodes
+    height?: number; // Custom height for resizable nodes
+    generationType?: 'text' | 'image'; // To distinguish loading states
     mimeType?: string;
     pdfUrl?: string; // Original PDF URL
     pdfPages?: string[]; // Array of image URLs for each page
@@ -41,10 +44,6 @@ export interface ConversationNodeData extends Record<string, unknown> {
     authorName?: string;
     authorColor?: string;
     hasChildren?: boolean;
-    // UI States
-    isGeneratingImage?: boolean;
-    width?: number;
-    height?: number;
 }
 
 export const USER_COLORS = [

@@ -354,10 +354,7 @@ Do not add any other text before or after.`;
             if (isImageGeneration) {
                 const imagePrompt = fullContent.replace('<<GENERATE_IMAGE>>:', '').trim();
                 console.log('[Image Gen] Detected prompt:', imagePrompt);
-                updateNode(nodeId, {
-                    content: 'Generating image...',
-                    isGeneratingImage: true
-                });
+                updateNode(nodeId, { content: '🎨 Painting...' });
 
                 try {
                     const imgRes = await fetch('/api/image', {
@@ -417,7 +414,6 @@ Do not add any other text before or after.`;
                         role: 'assistant',
                         isGenerated: true,
                         isGenerating: false,
-                        isGeneratingImage: false, // Reset explicit flag
                         label: 'inferred',
                     });
 
@@ -425,8 +421,7 @@ Do not add any other text before or after.`;
                     console.error('Image Generation Failed:', imgError);
                     updateNode(nodeId, {
                         content: `[Image Generation Failed: ${imgError.message}]`,
-                        isGenerating: false,
-                        isGeneratingImage: false
+                        isGenerating: false
                     });
                 }
                 return fullContent; // Exit
