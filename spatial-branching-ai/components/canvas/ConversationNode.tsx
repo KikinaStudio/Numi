@@ -566,7 +566,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
                         className={cn(
-                            "w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] px-6 pb-8 placeholder:italic placeholder:text-muted-foreground/70",
+                            "w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-[15px] leading-[1.65] px-6 pb-14 placeholder:italic placeholder:text-muted-foreground/70",
                             nodeData.branchContext ? "pt-5" : "pt-12" // Add top padding if no branch context to clear icon
                         )}
                         placeholder={!nodeData.parentId ? "Plant your idea ..." : "Type your message here..."}
@@ -583,7 +583,7 @@ function ConversationNodeComponent(props: NodeProps) {
                         }}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
-                            'prose-notion select-text cursor-text px-6 pb-8 min-h-[100px] nopan nodrag nowheel',
+                            'prose-notion select-text cursor-text px-6 pb-14 min-h-[100px] nopan nodrag nowheel',
                             nodeData.branchContext ? "pt-5" : "pt-12", // Add top padding if no branch context to clear icon
                             !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground/70 italic',
                             !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "max-h-[120px] overflow-hidden"
