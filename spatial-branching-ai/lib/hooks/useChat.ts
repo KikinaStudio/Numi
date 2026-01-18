@@ -453,9 +453,8 @@ Do not add any other text before or after.`;
 
                             const namingModels = [
                                 'google/gemini-2.0-flash-exp:free', // Primary
-                                'mistralai/mistral-7b-instruct:free', // Reliable
-                                'meta-llama/llama-3.2-3b-instruct:free', // Backup
-                                'openchat/openchat-7b:free' // Deep Backup
+                                'meta-llama/llama-3.2-3b-instruct:free', // Proven working
+                                'mistralai/mistral-7b-instruct:free', // Reliable Backup
                             ];
 
                             for (const model of namingModels) {
@@ -475,7 +474,8 @@ Do not add any other text before or after.`;
 
                                     if (nameResponse.ok) {
                                         const data = await nameResponse.json();
-                                        const rawTitle = data.choices?.[0]?.message?.content || '';
+                                        // Handle both simplified API response and standard OpenAI format
+                                        const rawTitle = data.content || data.choices?.[0]?.message?.content || '';
                                         const newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
 
                                         if (newTitle) {
