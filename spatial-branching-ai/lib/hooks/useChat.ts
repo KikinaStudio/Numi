@@ -215,7 +215,7 @@ export function useChat(options: UseChatOptions = {}) {
         let targetModel = activeModel; // Default
 
         if (hasVideo || hasImages) {
-            targetModel = 'google/gemini-2.0-flash-exp:free';
+            targetModel = 'allenai/molmo-2-8b:free';
         } else {
             targetModel = 'xiaomi/mimo-v2-flash:free';
         }
@@ -263,7 +263,7 @@ STYLE: Keep it short and to the point.`;
 
         try {
             console.log('[Vision Debug] Has Images:', hasImages);
-            console.log('[Vision Debug] Model:', hasImages ? 'google/gemini-2.0-flash-exp:free' : activeModel);
+            console.log('[Vision Debug] Model:', hasImages ? 'allenai/molmo-2-8b:free' : activeModel);
             console.log('[Vision Debug] Last Message Content:', JSON.stringify(validMessages[validMessages.length - 1]?.content, null, 2));
             console.log('[Vision Debug] Payload Size (approx):', JSON.stringify(validMessages).length);
 
