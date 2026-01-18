@@ -351,11 +351,7 @@ function ConversationNodeComponent(props: NodeProps) {
                     <img
                         src={nodeData.fileUrl}
                         alt={nodeData.fileName}
-                        className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm cursor-zoom-in"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsImageModalOpen(true);
-                        }}
+                        className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
                     />
                 ) : isAudio ? (
                     <div className="w-[370px] h-20 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center p-4 pr-16 shadow-sm">
@@ -445,7 +441,7 @@ function ConversationNodeComponent(props: NodeProps) {
                     return (
                         <div className={cn(
                             "absolute flex items-center gap-1 z-20",
-                            isAudio ? "top-1/2 -translate-y-1/2 right-4" : "top-3 left-3" // Moved to left for non-audio
+                            isAudio ? "top-1/2 -translate-y-1/2 right-4" : "top-3 left-3" // MOVED TO LEFT
                         )}>
                             <TooltipProvider>
                                 <Tooltip delayDuration={0}>
@@ -454,7 +450,7 @@ function ConversationNodeComponent(props: NodeProps) {
                                             <BadgeIcon className="h-4 w-4" />
                                         </div>
                                     </TooltipTrigger>
-                                    <TooltipContent side={isAudio ? "right" : "left"} className="bg-zinc-950 text-white border-0 text-[10px] font-bold px-3 py-1.5 rounded-md shadow-xl tracking-wide max-w-[200px] truncate">
+                                    <TooltipContent side={isAudio ? "right" : "right"} className="bg-zinc-950 text-white border-0 text-[10px] font-bold px-3 py-1.5 rounded-md shadow-xl tracking-wide max-w-[200px] truncate">
                                         {nodeData.fileName}
                                     </TooltipContent>
                                 </Tooltip>
@@ -463,43 +459,41 @@ function ConversationNodeComponent(props: NodeProps) {
                     );
                 })()}
 
-                {/* Full Screen Button - Top Right (Non-Audio) */}
-                {(!isAudio && !nodeData.isGenerating) && (
-                    <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Fullscreen / Reader Mode Button (Top Right) */}
+                {(isImage || isPdf) && (
+                    <div className="absolute top-3 right-3 z-20">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (isVideo) setIsVideoModalOpen(true);
-                                else setIsImageModalOpen(true);
+                                setIsImageModalOpen(true);
                             }}
-                            className="bg-background/80 backdrop-blur-md text-foreground p-2 rounded-full shadow-lg border border-white/10 hover:bg-background transition-colors flex items-center justify-center h-8 w-8"
-                            title="Full Screen"
+                            className="h-8 w-8 flex items-center justify-center rounded-lg text-white/70 bg-black/20 backdrop-blur-md opacity-0 group-hover:opacity-100 hover:text-white hover:bg-black/40 transition-all shadow-sm"
+                            title="Fullscreen"
                         >
                             <Maximize2 className="h-4 w-4" />
                         </button>
+
+                        {/* Fullscreen Image Modal */}
+                        <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+                            <DialogContent className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
+                                <DialogTitle className="sr-only">Image Viewer</DialogTitle>
+                                <button
+                                    onClick={() => setIsImageModalOpen(false)}
+                                    className="absolute -top-12 -right-12 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
+                                    title="Close"
+                                >
+                                    <X className="h-8 w-8" />
+                                </button>
+                                <img
+                                    src={nodeData.fileUrl}
+                                    alt={nodeData.fileName}
+                                    className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-2xl object-contain bg-black/50 backdrop-blur-xl"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 )}
-
-                {/* Full Screen Image Modal */}
-                <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-                    <DialogContent className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
-                        <DialogTitle className="sr-only">Image Viewer</DialogTitle>
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setIsImageModalOpen(false)}
-                            className="absolute -top-12 -right-12 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
-                            title="Close"
-                        >
-                            <X className="h-8 w-8" />
-                        </button>
-                        <img
-                            src={nodeData.fileUrl}
-                            alt={nodeData.fileName}
-                            className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl object-contain"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </DialogContent>
-                </Dialog>
 
                 {/* Handles - Global Visibility on Connect & Border Straddling */}
                 <NodeHandles id={id} />
