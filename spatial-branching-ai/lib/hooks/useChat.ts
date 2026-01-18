@@ -392,18 +392,18 @@ Do not add any other text before or after.`;
                     // TODO: UPGRADE TO PERSISTENCE IN NEXT STEP once I confirm the hook structure.
 
                     // For now, let's try to update the node with the URL.
+                    // Update node with image data (Flattened structure)
+                    // Note: updateNode merges into node.data
                     updateNode(nodeId, {
                         content: `[Generated Image: ${imagePrompt}]`,
-                        fileUrl: imageUrl, // Temporary, will fix reliability in next step
+                        fileUrl: imageUrl, 
+                        fileName: `generated-${Date.now()}.png`,
+                        mimeType: 'image/png',
                         role: 'assistant',
-                        data: {
-                            ...nodeToCheck?.data,
-                            label: 'inferred',
-                            mimeType: 'image/png', // Guessing
-                            isGenerated: true,
-                            isGenerating: false
-                        },
-                        isGenerating: false
+                        isGenerated: true,
+                        isGenerating: false,
+                        // Preserve previous data if needed, but updateNode handles partial updates
+                        // ...nodeToCheck?.data is not needed here as zustand immer merges it
                     });
 
                 } catch (imgError: any) {

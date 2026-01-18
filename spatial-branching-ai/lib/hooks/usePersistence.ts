@@ -34,6 +34,7 @@ interface DbNode {
         fileUrl?: string;
         fileName?: string;
         mimeType?: string;
+        isGenerated?: boolean;
     };
     model_config: {
         model?: string;
@@ -197,7 +198,8 @@ export function usePersistence() {
                     customPersona: node.data.customPersona,
                     fileUrl: node.data.fileUrl,
                     fileName: node.data.fileName,
-                    mimeType: node.data.mimeType
+                    mimeType: node.data.mimeType,
+                    isGenerated: node.data.isGenerated
                 },
                 model_config: node.data.modelConfig || {},
                 created_at: new Date().toISOString(),
@@ -446,15 +448,16 @@ export function usePersistence() {
                                 type: 'conversation',
                                 position: { x: node.position_x, y: node.position_y },
                                 data: {
-                                    role: node.data.role,
-                                    content: node.data.content,
-                                    branchContext: node.data.branchContext,
-                                    authorName: node.data.authorName,
-                                    selectedPersonaId: node.data.selectedPersonaId,
-                                    customPersona: node.data.customPersona,
-                                    fileUrl: node.data.fileUrl,
-                                    fileName: node.data.fileName,
-                                    mimeType: node.data.mimeType,
+                                    role: node.data?.role || 'assistant',
+                                    content: node.data?.content || '',
+                                    branchContext: node.data?.branchContext,
+                                    authorName: node.data?.authorName,
+                                    selectedPersonaId: node.data?.selectedPersonaId,
+                                    customPersona: node.data?.customPersona,
+                                    fileUrl: node.data?.fileUrl,
+                                    fileName: node.data?.fileName,
+                                    mimeType: node.data?.mimeType,
+                                    isGenerated: node.data?.isGenerated,
                                     modelConfig: node.model_config,
                                 },
                             };
