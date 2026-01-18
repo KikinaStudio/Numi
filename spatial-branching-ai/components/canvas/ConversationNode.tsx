@@ -384,13 +384,13 @@ function ConversationNodeComponent(props: NodeProps) {
 
                         {/* Fullscreen Video Modal */}
                         <Dialog open={isVideoModalOpen} onOpenChange={setIsVideoModalOpen}>
-                            <DialogContent className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
+                            <DialogContent showCloseButton={false} className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
                                 <DialogTitle className="sr-only">Video Player</DialogTitle>
 
                                 {/* Close Button - Detached & Large */}
                                 <button
                                     onClick={() => setIsVideoModalOpen(false)}
-                                    className="absolute -top-12 -right-12 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
+                                    className="absolute top-4 right-4 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
                                     title="Close Video"
                                 >
                                     <X className="h-8 w-8" />
@@ -475,11 +475,11 @@ function ConversationNodeComponent(props: NodeProps) {
 
                         {/* Fullscreen Image Modal */}
                         <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-                            <DialogContent className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
+                            <DialogContent showCloseButton={false} className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
                                 <DialogTitle className="sr-only">Image Viewer</DialogTitle>
                                 <button
                                     onClick={() => setIsImageModalOpen(false)}
-                                    className="absolute -top-12 -right-12 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
+                                    className="absolute top-4 right-4 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
                                     title="Close"
                                 >
                                     <X className="h-8 w-8" />
