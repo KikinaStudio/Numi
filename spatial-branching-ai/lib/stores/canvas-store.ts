@@ -41,6 +41,10 @@ export interface ConversationNodeData extends Record<string, unknown> {
     authorName?: string;
     authorColor?: string;
     hasChildren?: boolean;
+    // UI States
+    isGeneratingImage?: boolean;
+    width?: number;
+    height?: number;
 }
 
 export const USER_COLORS = [

@@ -1,14 +1,14 @@
 'use client';
 
 import { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
-import { Handle, Position, NodeProps, NodeResizer, NodeResizeControl } from '@xyflow/react';
+import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import { useReactFlow } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, Maximize2, Palette, Loader2 } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, Maximize2, Palette } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -304,6 +304,16 @@ function ConversationNodeComponent(props: NodeProps) {
         }
     }, [id, createChildNode, selectNode]);
 
+    // --- IMAGE GENERATION LOADING STATE ---
+    if (nodeData.isGeneratingImage) {
+        return (
+            <div className="p-3 pr-5 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center gap-3 shadow-sm w-fit">
+                <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+                <span className="text-xs font-medium text-muted-foreground animate-pulse">Generating image...</span>
+            </div>
+        );
+    }
+
     // --- MINIMAL MEDIA VIEW (Image / Audio / Video) ---
     if (nodeData.fileUrl) {
         const isPdf = nodeData.mimeType === 'application/pdf';
@@ -323,26 +333,31 @@ function ConversationNodeComponent(props: NodeProps) {
                     // Minimal selection indicator (no heavy ring)
                     selected ? 'scale-[1.02] shadow-2xl ring-1 ring-primary/30' : 'hover:scale-[1.01]'
                 )}
+                style={{
+                    width: nodeData.width,
+                    height: nodeData.height,
+                    minWidth: 200,
+                    minHeight: 200
+                }}
             >
+                <NodeResizer
+                    color="#3B82F6"
+                    isVisible={selected}
+                    minWidth={200}
+                    minHeight={200}
+                    onResizeEnd={(_, params) => {
+                        updateNode(id, { width: params.width, height: params.height });
+                    }}
+                    handleStyle={{ width: 8, height: 8, borderRadius: 999 }}
+                />
+
                 {/* Media Content */}
                 {isImage || isPdf ? (
-                    <div className="w-full h-full relative">
-                        <NodeResizeControl
-                            isVisible={selected}
-                            minWidth={200}
-                            minHeight={200}
-                            position="bottom-right"
-                            className="bg-transparent border-none"
-                        >
-                            <div className="absolute bottom-1 right-1 w-4 h-4 rounded-br-lg border-b-2 border-r-2 border-primary/50 hover:border-primary transition-colors cursor-nwse-resize" />
-                        </NodeResizeControl>
-                        <img
-                            src={nodeData.fileUrl}
-                            alt={nodeData.fileName}
-                            className="rounded-2xl border border-white/10 w-full h-full object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
-                            draggable={false}
-                        />
-                    </div>
+                    <img
+                        src={nodeData.fileUrl}
+                        alt={nodeData.fileName}
+                        className="w-full h-full rounded-2xl border border-white/10 object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
+                    />
                 ) : isAudio ? (
                     <div className="w-[370px] h-20 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center p-4 pr-16 shadow-sm">
                         <audio
@@ -353,25 +368,15 @@ function ConversationNodeComponent(props: NodeProps) {
                     </div>
                 ) : isVideo ? (
                     <div
-                        className="relative rounded-2xl overflow-hidden border border-white/10 w-full h-full bg-black min-w-[300px] min-h-[200px]"
+                        className="relative rounded-2xl overflow-hidden border border-white/10 max-w-[320px] bg-black"
                         onClick={(e) => {
                             e.stopPropagation();
                             setIsVideoModalOpen(true);
                         }}
                     >
-                        <NodeResizeControl
-                            isVisible={selected}
-                            minWidth={300}
-                            minHeight={200}
-                            position="bottom-right"
-                            className="bg-transparent border-none"
-                        >
-                            <div className="absolute bottom-1 right-1 w-4 h-4 rounded-br-lg border-b-2 border-r-2 border-primary/50 hover:border-primary transition-colors z-50 cursor-nwse-resize" />
-                        </NodeResizeControl>
-
                         <video
                             src={nodeData.fileUrl}
-                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                            className="w-full h-auto max-h-[400px] object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                             muted
                             preload="metadata"
                         />
@@ -413,6 +418,38 @@ function ConversationNodeComponent(props: NodeProps) {
                         <span>Unsupported File</span>
                     </div>
                 )}
+
+                {/* Media Type Badge */}
+                {(() => {
+                    let label = 'FILE';
+                    let BadgeIcon = FileText;
+
+                    if (isPdf) { label = 'PDF'; BadgeIcon = FileText; }
+                    else if (isImage) { label = nodeData.fileName?.split('.').pop()?.toUpperCase() || 'IMG'; BadgeIcon = ImageIcon; }
+                    else if (isAudio) { label = 'AUDIO'; BadgeIcon = AudioLines; }
+                    else if (isVideo) { label = 'VIDEO'; BadgeIcon = FileVideo; }
+                    else return null;
+
+                    return (
+                        <div className={cn(
+                            "absolute flex items-center gap-1 z-20",
+                            isAudio ? "top-1/2 -translate-y-1/2 right-4" : "top-3 right-3"
+                        )}>
+                            <TooltipProvider>
+                                <Tooltip delayDuration={0}>
+                                    <TooltipTrigger asChild>
+                                        <div className="bg-primary text-primary-foreground w-8 h-8 rounded-lg shadow-md backdrop-blur-md flex items-center justify-center border border-white/10 transition-transform hover:scale-105 shrink-0 cursor-default">
+                                            <BadgeIcon className="h-4 w-4" />
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side={isAudio ? "right" : "left"} className="bg-zinc-950 text-white border-0 text-[10px] font-bold px-3 py-1.5 rounded-md shadow-xl tracking-wide max-w-[200px] truncate">
+                                        {nodeData.fileName}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    );
+                })()}
 
                 {/* Handles - Global Visibility on Connect & Border Straddling */}
                 <NodeHandles id={id} />
@@ -525,7 +562,13 @@ function ConversationNodeComponent(props: NodeProps) {
                 </TooltipProvider>
             </div>
 
-
+            {
+                nodeData.isGenerating && (
+                    <div className="absolute top-3 right-3 z-20">
+                        <Sparkles className="h-4 w-4 text-yellow-500 animate-spin" />
+                    </div>
+                )
+            }
 
             {
                 nodeData.branchContext && (
@@ -575,29 +618,27 @@ function ConversationNodeComponent(props: NodeProps) {
                             'prose-notion select-text cursor-text px-6 pb-14 min-h-[100px] nopan nodrag nowheel',
                             nodeData.branchContext ? "pt-5" : "pt-12", // Add top padding if no branch context to clear icon
                             !nodeData.content && !nodeData.fileUrl && 'text-muted-foreground/70 italic',
-                            !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "max-h-[80px] overflow-hidden"
+                            !selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl && "h-[80px] overflow-hidden line-clamp-1"
                         )}
-                    // Serenity Mode: No mask, just truncate
+                        style={!selected && !isHovered && nodeData.hasChildren && !nodeData.fileUrl ? {
+                            // Removing mask for cleaner 1-line look as per request
+                        } : {}}
                     >
                         {
-                            nodeData.isGenerating ? (
-                                <div className="p-4 bg-muted/50 rounded-2xl border border-border/50 flex items-center gap-3 text-sm text-foreground/80 w-fit mt-2 animate-in fade-in zoom-in-95 duration-300">
-                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                                    <span>Generating Image...</span>
-                                </div>
-                            ) : nodeData.content ? (
-                                <div className={cn(
-                                    !selected && !isHovered && nodeData.hasChildren && "line-clamp-1 text-ellipsis"
-                                )}>
-                                    <MarkdownContent
-                                        content={nodeData.content}
-                                        branchedTexts={(nodeData as any).branchedTexts || []}
-                                    />
-                                </div>
+                            nodeData.content ? (
+                                <MarkdownContent
+                                    content={nodeData.content}
+                                    branchedTexts={(nodeData as any).branchedTexts || []}
+                                />
                             ) : (
-                                isUser ? (!nodeData.parentId ? "Plant your idea ..." : "Click to type...") : ''
+                                isUser ? (!nodeData.parentId ? "Plant your idea ..." : "Click to type...") : 'Generating...'
                             )
                         }
+                        {!selected && !isHovered && nodeData.hasChildren && (
+                            <div className="absolute bottom-1 left-0 right-0 flex justify-center pb-1 pointer-events-none">
+                                <div className="h-1.5 w-8 rounded-full bg-muted-foreground/30 animate-pulse" />
+                            </div>
+                        )}
                     </div>
                 )}
 
