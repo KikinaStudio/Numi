@@ -454,8 +454,8 @@ Do not add any other text before or after.`;
                             const namingModels = [
                                 'google/gemini-2.0-flash-exp:free', // Primary: Fast & Smart
                                 'meta-llama/llama-3.2-3b-instruct:free', // Backup 1: Reliable
-                                'liquid/lfm-40b:free', // Backup 2: Strong reasoning
-                                'google/gemini-2.0-flash-thinking-exp:free' // Backup 3: Alternative
+                                'meta-llama/llama-3-8b-instruct:free', // Backup 2: Solid
+                                'huggingfaceh4/zephyr-7b-beta:free' // Backup 3: Old faithful
                             ];
 
                             for (const model of namingModels) {
@@ -482,6 +482,8 @@ Do not add any other text before or after.`;
                                             console.log(`🏷️ Auto-named tree using ${model}:`, newTitle);
                                             setTreeName(newTitle);
                                             break; // Success! Stop trying other models
+                                        } else {
+                                            console.warn(`⚠️ Auto-naming empty response from ${model}`);
                                         }
                                     } else {
                                         console.warn(`⚠️ Auto-naming failed with ${model}:`, await nameResponse.text());
