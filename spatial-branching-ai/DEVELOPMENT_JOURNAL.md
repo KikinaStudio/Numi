@@ -64,6 +64,32 @@ This negative space creates a balanced, spacious feel.
 - **Tokens**: `bg-background/40`, `backdrop-blur-md`, `border-white/10`.
 - **Images**: Uploaded transparent PNGs use `bg-black/2 dark:bg-white/2` to feel like objects floating on the canvas.
 
+### 5. The "Swiss Tech" Design System (Strict)
+
+Any new UI element must adhere to the **International Typographic Style** (Swiss Style), adapted for high-tech interfaces.
+
+- **Typography**:
+  - **Font**: Inter (or Helvetica/Univers equivalent).
+  - **Weights**: **Bold** (700) for headers/data points, **Regular** (400) for body. Avoid "Medium" or "Semibold" to maintain stark contrast.
+  - **Sizing**: Strict modular scale. `text-xs` (12px) for metadata, `text-sm` (14px) for body, `text-lg` (18px) for major headers.
+  - **Leading**: Tight for headers (`leading-tight`), loose for body (`leading-relaxed`).
+
+- **Layout & Grid**:
+  - **Alignment**: Flush left, ragged right. No centered text blocks (except explicit hero callouts).
+  - **Padding**: Multiples of 4px (Tailwind scale). Standardize on `p-2`, `p-4`, `gap-2`, `gap-4`.
+  - **Whitespace**: "Negative space is an active element." Don't crowd content. If in doubt, add padding.
+
+- **Visuals**:
+  - **Borders**: Thin, crisp 1px lines (`border-border`).
+  - **Radius**: `rounded-lg` or `rounded-xl` for containers. `rounded-full` *strictly* for buttons/toggles.
+  - **Color**: Monochromatic Zinc scale. Color is **logic**, not decoration.
+    - Blue (`text-blue-500`): User Action/Identity.
+    - Green/Emerald (`text-emerald-500`): AI Success/Generation.
+    - Red (`text-red-500`): Destructive.
+    - Zinc (`text-zinc-500`): Meta-information.
+
+- **Philosophy**: "Form follows function." Remove everything that is not essential information. Zero decoration.
+
 ---
 
 ## 💡 Future Discoveries & Hooks
