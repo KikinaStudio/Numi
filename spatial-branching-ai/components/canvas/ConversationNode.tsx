@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useCanvasStore, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { useChat } from '@/lib/hooks/useChat';
-import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, Maximize2 } from 'lucide-react';
+import { Bot, User, Sparkles, Copy, GitBranch, Send, Reply, ArrowRight, Scissors, Image as ImageIcon, FileText, Plus, Pencil, Search, CheckSquare, Zap, TrendingUp, Heart, Settings, Play, FileAudio, FileVideo, X, AudioLines, Maximize2, Palette } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -482,6 +482,11 @@ function ConversationNodeComponent(props: NodeProps) {
                             >
                                 {isAssistant ? (() => {
                                     const personaId = nodeData.selectedPersonaId || 'standard';
+
+                                    // Special Case: Generated Image
+                                    if (nodeData.isGenerated) {
+                                        return <Palette className="h-4 w-4 text-white" />;
+                                    }
 
                                     // Special Case for Standard: Numi Logo
                                     if (personaId === 'standard') {

@@ -19,6 +19,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
     content: string;
     branchContext?: string; // Selected text that triggered this branch
     isGenerating?: boolean;
+    isGenerated?: boolean;
     fileUrl?: string; // For images/files
     fileName?: string;
     fileContent?: string; // Extracted text content for multimodal documents (PDF, DOCX, etc.)
