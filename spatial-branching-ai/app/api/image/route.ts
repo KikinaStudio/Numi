@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+// export const runtime = 'edge'; // Disabled to support large Base64 responses
 
 export async function POST(req: Request) {
     try {
