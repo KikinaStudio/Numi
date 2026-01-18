@@ -107,6 +107,7 @@ function ConversationNodeComponent(props: NodeProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     const [isEditingPersona, setIsEditingPersona] = useState(false);
@@ -350,7 +351,11 @@ function ConversationNodeComponent(props: NodeProps) {
                     <img
                         src={nodeData.fileUrl}
                         alt={nodeData.fileName}
-                        className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm"
+                        className="rounded-2xl border border-white/10 max-w-[300px] max-h-[400px] object-cover bg-black/2 dark:bg-white/2 backdrop-blur-sm cursor-zoom-in"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsImageModalOpen(true);
+                        }}
                     />
                 ) : isAudio ? (
                     <div className="w-[370px] h-20 bg-background/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center p-4 pr-16 shadow-sm">
@@ -413,20 +418,16 @@ function ConversationNodeComponent(props: NodeProps) {
                     </div>
                 )}
 
-                {/* Interactive Reply Overlay - Visible on Hover */}
+                {/* Standard Reply Button for Consistency */}
                 {!nodeData.isGenerating && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-30">
-                        {/* We use pointer-events-auto on the button itself so the rest of the image remains drag-friendly */}
-                        <div className="absolute bottom-3 right-12 pointer-events-auto scale-90 hover:scale-100 transition-transform">
-                            <button
-                                onClick={handleReply}
-                                className="bg-background/80 backdrop-blur-md text-foreground p-2 rounded-full shadow-lg border border-white/10 hover:bg-background transition-colors flex items-center gap-2 px-4"
-                                title="Reply to this"
-                            >
-                                <Reply className="h-4 w-4" />
-                                <span className="text-xs font-bold">Reply</span>
-                            </button>
-                        </div>
+                    <div className="absolute bottom-2 right-2 flex justify-end z-30 transition-opacity opacity-0 group-hover:opacity-100">
+                        <button
+                            onClick={handleReply}
+                            className="bg-accent text-accent-foreground p-2 rounded-lg shadow-md hover:bg-accent/90 transition-all flex items-center justify-center h-8 w-8 border border-border"
+                            title="Reply"
+                        >
+                            <Reply className="h-4 w-4" />
+                        </button>
                     </div>
                 )}
 
@@ -444,7 +445,7 @@ function ConversationNodeComponent(props: NodeProps) {
                     return (
                         <div className={cn(
                             "absolute flex items-center gap-1 z-20",
-                            isAudio ? "top-1/2 -translate-y-1/2 right-4" : "top-3 right-3"
+                            isAudio ? "top-1/2 -translate-y-1/2 right-4" : "top-3 left-3" // Moved to left for non-audio
                         )}>
                             <TooltipProvider>
                                 <Tooltip delayDuration={0}>
@@ -461,6 +462,44 @@ function ConversationNodeComponent(props: NodeProps) {
                         </div>
                     );
                 })()}
+
+                {/* Full Screen Button - Top Right (Non-Audio) */}
+                {(!isAudio && !nodeData.isGenerating) && (
+                    <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isVideo) setIsVideoModalOpen(true);
+                                else setIsImageModalOpen(true);
+                            }}
+                            className="bg-background/80 backdrop-blur-md text-foreground p-2 rounded-full shadow-lg border border-white/10 hover:bg-background transition-colors flex items-center justify-center h-8 w-8"
+                            title="Full Screen"
+                        >
+                            <Maximize2 className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+
+                {/* Full Screen Image Modal */}
+                <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+                    <DialogContent className="max-w-[90vw] w-fit bg-transparent border-none p-0 shadow-2xl flex items-center justify-center outline-none">
+                        <DialogTitle className="sr-only">Image Viewer</DialogTitle>
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setIsImageModalOpen(false)}
+                            className="absolute -top-12 -right-12 z-[10000] text-white/80 hover:text-white bg-black/50 hover:bg-black/80 rounded-full p-2 backdrop-blur-md transition-all scale-100 hover:scale-110"
+                            title="Close"
+                        >
+                            <X className="h-8 w-8" />
+                        </button>
+                        <img
+                            src={nodeData.fileUrl}
+                            alt={nodeData.fileName}
+                            className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl object-contain"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </DialogContent>
+                </Dialog>
 
                 {/* Handles - Global Visibility on Connect & Border Straddling */}
                 <NodeHandles id={id} />
