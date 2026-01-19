@@ -205,8 +205,15 @@ export function useChat(options: UseChatOptions = {}) {
                 // Combine text parts and push images to end
                 const finalContent = [...textParts, ...imageParts];
 
+                // FORCE 'USER' ROLE FOR IMAGES:
+                // Generated images are 'assistant' messages, but Vision APIs (like Gemini/OpenRouter)
+                // often ignore images in 'assistant' history. We treat ALL image-containing messages
+                // as 'user' content to ensure the model "sees" them.
+                const hasImage = finalContent.some(c => c.type === 'image_url');
+                const forcedRole = hasImage ? 'user' : (m.role as 'user' | 'assistant' | 'system');
+
                 return {
-                    role: m.role as 'user' | 'assistant' | 'system',
+                    role: forcedRole,
                     content: finalContent
                 };
             })))
@@ -467,27 +474,30 @@ Do not add any other text before or after.`;
                         // Find the user prompt that triggered this response
                         const context = getConversationContext(nodeId);
                         // Context format: [{role, content}, ...]
-                        // We want to summarize the first user message + this response
+                        // We want to summarize the first user message + first assistant response
                         const firstUserMessage = context.find(m => m.role === 'user')?.content || '';
-                        const assistantResponse = fullContent;
+                        const firstAssistantResponse = fullContent;
 
                         if (firstUserMessage) {
-                            const namingPrompt = `Summarize this conversation topic in 3 words or less. strictly 3 words max. No quotes. Topic: User: "${firstUserMessage.slice(0, 200)}..." Assistant: "${assistantResponse.slice(0, 200)}..."`;
+                            const deriveTitle = (text: string) => {
+                                const cleaned = text
+                                    .replace(/[\r\n]+/g, ' ')
+                                    .replace(/[^\w\s-]/g, '')
+                                    .trim();
+                                if (!cleaned) return '';
+                                return cleaned.split(/\s+/).slice(0, 4).join(' ');
+                            };
 
-                            const namingModels = [
-                                'google/gemini-2.0-flash-exp:free', // Primary
-                                'meta-llama/llama-3.2-3b-instruct:free', // Proven working
-                                'mistralai/mistral-7b-instruct:free', // Reliable Backup
-                            ];
-
-                            for (const model of namingModels) {
+                            let newTitle = '';
+                            if (apiKeys.openrouter) {
+                                const namingPrompt = `Summarize the assistant's first response in 4 words or less. Strictly 4 words max. No quotes. Context user: "${firstUserMessage.slice(0, 160)}..." Assistant: "${firstAssistantResponse.slice(0, 240)}..."`;
                                 try {
                                     const nameResponse = await fetch('/api/chat', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
                                             messages: [{ role: 'user', content: namingPrompt }],
-                                            model: model,
+                                            model: defaultModel,
                                             apiKey: apiKeys.openrouter,
                                             provider: 'openrouter',
                                             temperature: 0.3,
@@ -499,21 +509,23 @@ Do not add any other text before or after.`;
                                         const data = await nameResponse.json();
                                         // Handle both simplified API response and standard OpenAI format
                                         const rawTitle = data.content || data.choices?.[0]?.message?.content || '';
-                                        const newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
-
-                                        if (newTitle) {
-                                            console.log(`🏷️ Auto-named tree using ${model}:`, newTitle);
-                                            setTreeName(newTitle);
-                                            break; // Success! Stop trying other models
-                                        } else {
-                                            console.warn(`⚠️ Auto-naming empty response from ${model}. Data:`, JSON.stringify(data));
-                                        }
+                                        newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
                                     } else {
-                                        console.warn(`⚠️ Auto-naming failed with ${model}:`, await nameResponse.text());
+                                        console.warn(`⚠️ Auto-naming failed:`, await nameResponse.text());
                                     }
                                 } catch (e) {
-                                    console.warn(`⚠️ Auto-naming error with ${model}:`, e);
+                                    console.warn(`⚠️ Auto-naming error:`, e);
                                 }
+                            }
+
+                            if (!newTitle) {
+                                const combined = `${firstUserMessage} ${firstAssistantResponse || ''}`.trim();
+                                newTitle = deriveTitle(combined);
+                            }
+
+                            if (newTitle) {
+                                console.log(`🏷️ Auto-named tree:`, newTitle);
+                                setTreeName(newTitle);
                             }
                         }
                     } catch (error) {

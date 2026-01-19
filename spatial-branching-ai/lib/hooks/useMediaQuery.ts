@@ -22,13 +22,8 @@ export function useMediaQuery(query: string) {
 
     setMatches(mediaQueryList.matches);
 
-    if ('addEventListener' in mediaQueryList) {
-      mediaQueryList.addEventListener('change', onChange);
-      return () => mediaQueryList.removeEventListener('change', onChange);
-    }
-
-    mediaQueryList.addListener(onChange);
-    return () => mediaQueryList.removeListener(onChange);
+    mediaQueryList.addEventListener('change', onChange);
+    return () => mediaQueryList.removeEventListener('change', onChange);
   }, [query]);
 
   return matches;
