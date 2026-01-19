@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useRef, useMemo, useState, useEffect, memo } from 'react';
 import {
     ReactFlow,
@@ -11,28 +12,22 @@ import {
     useReactFlow,
     Panel,
     NodeTypes,
-    PanOnScrollMode,
 } from '@xyflow/react';
-import { useCanvasStore, useNodes, useEdges, ConversationNodeData, useTemporalStore, USER_COLORS } from '@/lib/stores/canvas-store';
+import { useCanvasStore, useNodes, useEdges, ConversationNodeData, USER_COLORS } from '@/lib/stores/canvas-store';
 import { useShallow } from 'zustand/react/shallow';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import ConversationNode from './ConversationNode';
 import NodeContextMenu from './NodeContextMenu';
 import SimpleFloatingEdge from './SimpleFloatingEdge';
-import { ReaderView } from './ReaderView';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Cloud, Check, Loader2, AlertCircle, FolderOpen, FilePlus, Home, Settings, Share2, Users, MousePointerClick, Lock, UserPlus, Undo2 } from 'lucide-react';
+import { Plus, Check, Loader2, FolderOpen, FilePlus, Settings, Users, UserPlus, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/lib/hooks/useChat';
 import { usePersistence } from '@/lib/hooks/usePersistence';
 import { supabase } from '@/lib/supabase/client';
-import { TreeListDialog } from './TreeListDialog';
-import { SettingsDialog } from '@/components/ui/settings-dialog';
-import { UserOnboardingModal } from './UserOnboardingModal';
-import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { CollaboratorCursor } from './CollaboratorCursor';
-import { LogoGuide } from './LogoGuide';
 import { convertPdfToImages } from '@/lib/utils/pdf-processor';
 import { extractVideoFrames } from '@/lib/utils/video-processor';
 import { extractTextFromFile } from '@/lib/utils/file-text-extractor';
@@ -42,6 +37,31 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+const TreeListDialog = dynamic(
+    () => import('./TreeListDialog').then((mod) => mod.TreeListDialog),
+    { ssr: false }
+);
+const SettingsDialog = dynamic(
+    () => import('@/components/ui/settings-dialog').then((mod) => mod.SettingsDialog),
+    { ssr: false }
+);
+const UserOnboardingModal = dynamic(
+    () => import('./UserOnboardingModal').then((mod) => mod.UserOnboardingModal),
+    { ssr: false }
+);
+const DiagnosticsPanel = dynamic(
+    () => import('./DiagnosticsPanel').then((mod) => mod.DiagnosticsPanel),
+    { ssr: false, loading: () => null }
+);
+const ReaderView = dynamic(
+    () => import('./ReaderView').then((mod) => mod.ReaderView),
+    { ssr: false, loading: () => null }
+);
+const LogoGuide = dynamic(
+    () => import('./LogoGuide').then((mod) => mod.LogoGuide),
+    { ssr: false, loading: () => null }
+);
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
@@ -87,6 +107,7 @@ function Canvas() {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const { theme } = useSettingsStore();
     const { screenToFlowPosition } = useReactFlow();
+    const isMobile = useMediaQuery('(max-width: 768px)');
 
     const nodes = useNodes();
     const edges = useEdges();
@@ -439,6 +460,10 @@ function Canvas() {
         },
     }), [theme]);
 
+    const logoSrc = theme === 'dark'
+        ? "/assets/logo/logo-white-bg.png"
+        : "/assets/logo/logo-black-bg.png";
+
     // Unified File Upload Handler
     const handleFileUpload = useCallback(async (file: File, position: { x: number, y: number }) => {
         if (!supabase) {
@@ -699,55 +724,69 @@ function Canvas() {
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                     // Performance & Mobile Optimizations
                     onlyRenderVisibleElements={true}
-                    minZoom={0.1}
-                    maxZoom={2}
+                    minZoom={isMobile ? 0.2 : 0.1}
+                    maxZoom={isMobile ? 1.5 : 2}
                     proOptions={{ hideAttribution: true }}
 
                     // Interaction Settings
                     deleteKeyCode={['Backspace', 'Delete']}
-                    snapToGrid
+                    snapToGrid={!isMobile}
                     snapGrid={[20, 20]}
-                    panOnScroll
+                    panOnScroll={!isMobile}
                     panOnDrag
                     selectionOnDrag={false}
                     zoomOnScroll={false}
                     zoomOnDoubleClick={false}
                     zoomOnPinch
                 >
-                    <Background
-                        variant={BackgroundVariant.Dots}
-                        gap={20}
-                        size={1}
-                        color={theme === 'dark' ? "hsl(var(--muted-foreground) / 0.3)" : "hsl(var(--muted-foreground) / 0.15)"}
-                    />
-                    <Controls
-                        className="!bg-card !border !border-border !rounded-lg !shadow-lg"
-                        showInteractive={false}
-                    />
-                    <MiniMap
-                        className="!bg-card/80 !border !border-border !rounded-lg !shadow-lg backdrop-blur-sm"
-                        nodeColor={(node) => {
-                            const data = node.data as ConversationNodeData;
-                            if (data.fileUrl) return 'hsl(240 3.8% 46.1%)'; // Zinc-500 for files (Nice Gray)
-                            return data?.role === 'user'
-                                ? 'hsl(217.2 91.2% 59.8%)' // blue
-                                : 'hsl(160.1 84.1% 39.4%)'; // emerald
-                        }}
-                        maskColor={theme === 'dark' ? "hsl(var(--background) / 0.7)" : "hsl(var(--background) / 0.4)"}
-                        pannable
-                        zoomable
-                    />
+                    {!isMobile && (
+                        <>
+                            <Background
+                                variant={BackgroundVariant.Dots}
+                                gap={20}
+                                size={1}
+                                color={theme === 'dark' ? "hsl(var(--muted-foreground) / 0.3)" : "hsl(var(--muted-foreground) / 0.15)"}
+                            />
+                            <Controls
+                                className="!bg-card !border !border-border !rounded-lg !shadow-lg"
+                                showInteractive={false}
+                            />
+                            <MiniMap
+                                className="!bg-card/80 !border !border-border !rounded-lg !shadow-lg backdrop-blur-sm"
+                                nodeColor={(node) => {
+                                    const data = node.data as ConversationNodeData;
+                                    if (data.fileUrl) return 'hsl(240 3.8% 46.1%)'; // Zinc-500 for files (Nice Gray)
+                                    return data?.role === 'user'
+                                        ? 'hsl(217.2 91.2% 59.8%)' // blue
+                                        : 'hsl(160.1 84.1% 39.4%)'; // emerald
+                                }}
+                                maskColor={theme === 'dark' ? "hsl(var(--background) / 0.7)" : "hsl(var(--background) / 0.4)"}
+                                pannable
+                                zoomable
+                            />
+                        </>
+                    )}
 
 
 
                     {/* Live Cursors Overlay - Memoized to prevent Canvas re-renders */}
-                    <CollaboratorsCursors />
+                    {!isMobile && <CollaboratorsCursors />}
 
 
                     {/* Tree Name Panel */}
-                    <Panel position="top-left" className="m-4">
-                        <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
-                            <LogoGuide />
+                    <Panel position="top-left" className="m-3 sm:m-4">
+                        <div className="flex items-center gap-2 sm:gap-3 bg-card/80 backdrop-blur-sm p-2 rounded-lg border border-border shadow-sm">
+                            {isMobile ? (
+                                <div className="flex items-center gap-2 pr-2 border-r border-border">
+                                    <img
+                                        src={logoSrc}
+                                        alt="Numi"
+                                        className="h-6 w-auto rounded-md shadow-sm"
+                                    />
+                                </div>
+                            ) : (
+                                <LogoGuide />
+                            )}
                             <div className="relative group">
                                 <Input
                                     value={treeName.startsWith('Untitled Tree') ? '' : treeName}
@@ -758,13 +797,13 @@ function Canvas() {
                                             e.currentTarget.blur();
                                         }
                                     }}
-                                    className="h-8 w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium cursor-text"
+                                    className="h-8 w-[140px] sm:w-[200px] bg-transparent border-none focus-visible:ring-0 text-sm font-medium cursor-text"
                                     placeholder="Name your Tree"
                                 />
                             </div>
                         </div>
                     </Panel>
-                    <Panel position="top-right" className="mt-4 mr-4 flex flex-col items-end gap-2">
+                    <Panel position="top-right" className="mt-3 mr-3 sm:mt-4 sm:mr-4 flex flex-col items-end gap-2">
                         {/* Collaborators List (Including Me) - Selective Selector */}
                         {(() => {
                             const collaborators = useCanvasStore(state => state.collaborators);
@@ -772,6 +811,15 @@ function Canvas() {
                             const count = Object.keys(collaborators).length;
 
                             if (count === 0) return null;
+
+                            if (isMobile) {
+                                return (
+                                    <div className="flex items-center px-3 h-8 bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md border border-white/10 rounded-full shadow-lg text-[11px] font-bold text-white whitespace-nowrap">
+                                        <Users className="h-3.5 w-3.5 mr-2 opacity-70" />
+                                        {count}
+                                    </div>
+                                );
+                            }
 
                             return (
                                 <div className="flex items-center gap-2">
@@ -806,12 +854,12 @@ function Canvas() {
 
 
 
-                    <Panel position="bottom-center" className="mb-4">
-                        <div className="flex items-center gap-2 p-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
+                    <Panel position="bottom-center" className="mb-3 sm:mb-4">
+                        <div className="flex flex-wrap items-center justify-center gap-2 p-2 bg-card/80 backdrop-blur-sm border border-border rounded-lg shadow-lg">
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="gap-2"
+                                className={cn(isMobile ? "h-9 w-9 p-0" : "gap-2")}
                                 onClick={() => {
                                     clearCanvas();
                                     setTreeName('');
@@ -822,29 +870,29 @@ function Canvas() {
                                 title="New Conversation"
                             >
                                 <Plus className="h-4 w-4" />
-                                New
+                                {!isMobile && 'New'}
                             </Button>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="gap-2"
+                                className={cn(isMobile ? "h-9 w-9 p-0" : "gap-2")}
                                 onClick={() => fileInputRef.current?.click()}
                                 title="Add Image or PDF"
                             >
                                 <FilePlus className="h-4 w-4" />
-                                Add
+                                {!isMobile && 'Add'}
                             </Button>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="gap-2"
+                                className={cn(isMobile ? "h-9 w-9 p-0" : "gap-2")}
                                 onClick={() => setShowTreeList(true)}
                                 title="Open Saved"
                             >
                                 <FolderOpen className="h-4 w-4" />
-                                Open
+                                {!isMobile && 'Open'}
                             </Button>
-                            <div className="w-px h-6 bg-border" />
+                            {!isMobile && <div className="w-px h-6 bg-border" />}
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -854,18 +902,18 @@ function Canvas() {
                             >
                                 <Settings className="h-4 w-4" />
                             </Button>
-                            <div className="w-px h-6 bg-border" />
+                            {!isMobile && <div className="w-px h-6 bg-border" />}
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="gap-2"
+                                className={cn(isMobile ? "h-9 w-9 p-0" : "gap-2")}
                                 onClick={handleShare}
                                 title="Share Link"
                             >
                                 <UserPlus className="h-4 w-4" />
-                                Share
+                                {!isMobile && 'Share'}
                             </Button>
-                            <div className="w-px h-6 bg-border" />
+                            {!isMobile && <div className="w-px h-6 bg-border" />}
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -885,7 +933,7 @@ function Canvas() {
 
 
                     {/* Diagnostics Panel for Realtime Debugging */}
-                    <DiagnosticsPanel />
+                    {!isMobile && <DiagnosticsPanel />}
                 </ReactFlow >
 
                 {/* Context Menu */}

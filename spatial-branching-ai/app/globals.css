@@ -263,3 +263,14 @@
   opacity: 1 !important;
   transform: scale(1.2) !important;
 }
+
+@media (max-width: 768px) {
+  .prose-notion {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .react-flow__panel {
+    margin: 0.5rem !important;
+  }
+}
