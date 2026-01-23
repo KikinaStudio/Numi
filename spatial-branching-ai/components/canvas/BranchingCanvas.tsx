@@ -358,7 +358,22 @@ function Canvas() {
         selectNode(null);
         setTextSelection(null);
         setContextMenu(null);
-    }, [selectNode, setTextSelection]);
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H5',
+                location: 'BranchingCanvas.tsx:onPaneClick',
+                message: 'Pane clicked, clearing selection',
+                data: { textSelection: !!textSelection, contextMenu: !!contextMenu },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
+    }, [selectNode, setTextSelection, setContextMenu, textSelection, contextMenu]);
 
     // Handle double click on pane - create root node
     const onPaneDoubleClick = useCallback((event: React.MouseEvent) => {
@@ -377,7 +392,22 @@ function Canvas() {
             y: event.clientY,
             nodeId: node.id,
         });
-    }, []);
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H5',
+                location: 'BranchingCanvas.tsx:onNodeContextMenu',
+                message: 'Context menu opened',
+                data: { nodeId: node.id, hasSelection: !!textSelection, selectionLength: textSelection?.text?.length || 0 },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
+    }, [textSelection]);
 
     // Handle context menu actions
     const handleCreateBranch = useCallback(async () => {
@@ -394,6 +424,21 @@ function Canvas() {
         const childNodeId = createChildNode(contextMenu.nodeId, undefined, branchContext);
         setContextMenu(null);
         setTextSelection(null);
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H5',
+                location: 'BranchingCanvas.tsx:handleCreateBranch',
+                message: 'Create branch clicked',
+                data: { nodeId: contextMenu.nodeId, branchLength: branchContext?.length || 0 },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
 
         // If parent is a user node, automatically generate AI response
         if (parentNode.data.role === 'user' && parentNode.data.content.trim()) {

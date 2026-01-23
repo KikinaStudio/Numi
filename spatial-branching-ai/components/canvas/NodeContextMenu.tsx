@@ -53,6 +53,24 @@ const NodeContextMenu = memo(({
         };
     }, [onClose]);
 
+    useEffect(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H5',
+                location: 'NodeContextMenu.tsx:useEffect',
+                message: 'Context menu mounted',
+                data: { nodeId, hasTextSelection, selectedLength: selectedText?.length || 0 },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
+    }, [nodeId, hasTextSelection, selectedText]);
+
     // Adjust position to stay within viewport
     const adjustedX = Math.min(x, window.innerWidth - 220);
     const adjustedY = Math.min(y, window.innerHeight - 300); // Increased buffer for expanded menu

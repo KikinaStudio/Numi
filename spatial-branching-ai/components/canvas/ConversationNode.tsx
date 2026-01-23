@@ -191,6 +191,21 @@ function ConversationNodeComponent(props: NodeProps) {
                 if (selection) {
                     selection.removeAllRanges();
                     selection.addRange(range);
+                    // #region agent log
+                    fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: 'debug-session',
+                            runId: 'pre-fix',
+                            hypothesisId: 'H5',
+                            location: 'ConversationNode.tsx:handleMouseUp:raf',
+                            message: 'Selection reapplied after context menu',
+                            data: { id, selectionLength: selection.toString().length },
+                            timestamp: Date.now()
+                        })
+                    }).catch(() => { });
+                    // #endregion
                 }
             });
             // #region agent log
@@ -232,6 +247,21 @@ function ConversationNodeComponent(props: NodeProps) {
         if (suppressClickRef.current) {
             e.preventDefault();
             e.stopPropagation();
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: 'debug-session',
+                    runId: 'pre-fix',
+                    hypothesisId: 'H5',
+                    location: 'ConversationNode.tsx:handleClick:suppressed',
+                    message: 'Click suppressed after selection',
+                    data: { id },
+                    timestamp: Date.now()
+                })
+            }).catch(() => { });
+            // #endregion
             return;
         }
         e.stopPropagation();
