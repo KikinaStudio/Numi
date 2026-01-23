@@ -355,6 +355,24 @@ function Canvas() {
     }, [me, setMe, updateCollaborator, screenToFlowPosition]);
     // Handle pane click - create root node or clear selection
     const onPaneClick = useCallback(() => {
+        if (textSelection || contextMenu) {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: 'debug-session',
+                    runId: 'pre-fix',
+                    hypothesisId: 'H5',
+                    location: 'BranchingCanvas.tsx:onPaneClick',
+                    message: 'Pane click ignored due to selection/menu',
+                    data: { textSelection: !!textSelection, contextMenu: !!contextMenu },
+                    timestamp: Date.now()
+                })
+            }).catch(() => { });
+            // #endregion
+            return;
+        }
         selectNode(null);
         setTextSelection(null);
         setContextMenu(null);

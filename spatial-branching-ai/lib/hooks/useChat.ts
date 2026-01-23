@@ -477,6 +477,25 @@ Do not add any other text before or after.`;
                         // We want to summarize the first user message + first assistant response
                         const firstUserMessage = context.find(m => m.role === 'user')?.content || '';
                         const firstAssistantResponse = fullContent;
+                        // #region agent log
+                        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sessionId: 'debug-session',
+                                runId: 'pre-fix',
+                                hypothesisId: 'H6',
+                                location: 'useChat.ts:autoNaming:start',
+                                message: 'Auto-naming started',
+                                data: {
+                                    hasKey: !!apiKeys.openrouter,
+                                    userLen: firstUserMessage.length,
+                                    assistantLen: firstAssistantResponse.length
+                                },
+                                timestamp: Date.now()
+                            })
+                        }).catch(() => { });
+                        // #endregion
 
                         if (firstUserMessage) {
                             const deriveTitle = (text: string) => {
@@ -505,11 +524,42 @@ Do not add any other text before or after.`;
                                         }),
                                     });
 
+                                    // #region agent log
+                                    fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            sessionId: 'debug-session',
+                                            runId: 'pre-fix',
+                                            hypothesisId: 'H6',
+                                            location: 'useChat.ts:autoNaming:response',
+                                            message: 'Auto-naming response received',
+                                            data: { status: nameResponse.status },
+                                            timestamp: Date.now()
+                                        })
+                                    }).catch(() => { });
+                                    // #endregion
+
                                     if (nameResponse.ok) {
                                         const data = await nameResponse.json();
                                         // Handle both simplified API response and standard OpenAI format
                                         const rawTitle = data.content || data.choices?.[0]?.message?.content || '';
                                         newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
+                                        // #region agent log
+                                        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                sessionId: 'debug-session',
+                                                runId: 'pre-fix',
+                                                hypothesisId: 'H6',
+                                                location: 'useChat.ts:autoNaming:parsed',
+                                                message: 'Auto-naming parsed title',
+                                                data: { titleLength: newTitle.length },
+                                                timestamp: Date.now()
+                                            })
+                                        }).catch(() => { });
+                                        // #endregion
                                     } else {
                                         console.warn(`⚠️ Auto-naming failed:`, await nameResponse.text());
                                     }
@@ -521,6 +571,21 @@ Do not add any other text before or after.`;
                             if (!newTitle) {
                                 const combined = `${firstUserMessage} ${firstAssistantResponse || ''}`.trim();
                                 newTitle = deriveTitle(combined);
+                                // #region agent log
+                                fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        sessionId: 'debug-session',
+                                        runId: 'pre-fix',
+                                        hypothesisId: 'H6',
+                                        location: 'useChat.ts:autoNaming:fallback',
+                                        message: 'Auto-naming fallback used',
+                                        data: { fallbackLength: newTitle.length },
+                                        timestamp: Date.now()
+                                    })
+                                }).catch(() => { });
+                                // #endregion
                             }
 
                             if (newTitle) {

@@ -42,6 +42,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
     authorColor?: string;
     hasChildren?: boolean;
     isNew?: boolean;
+    nodeHeight?: number;
 }
 
 export const USER_COLORS = [
@@ -350,16 +351,19 @@ export const useCanvasStore = create<CanvasState>()(
                         .filter((n): n is ConversationNode => !!n)
                         .sort((a, b) => a.position.y - b.position.y);
 
+                    const baseNode = childNodes.length > 0 ? childNodes[childNodes.length - 1] : parent;
+                    const baseHeight = baseNode.data.nodeHeight || 180;
+                    const gap = 180;
+
                     if (childNodes.length > 0) {
-                        const lastChild = childNodes[childNodes.length - 1];
                         finalPosition = {
                             x: parent.position.x,
-                            y: lastChild.position.y + 180
+                            y: baseNode.position.y + baseHeight + gap
                         };
                     } else {
                         finalPosition = {
                             x: parent.position.x,
-                            y: parent.position.y + 180
+                            y: baseNode.position.y + baseHeight + gap
                         };
                     }
                 }
@@ -419,6 +423,7 @@ export const useCanvasStore = create<CanvasState>()(
                             id,
                             parentId,
                             parentPos: parent?.position,
+                            parentHeight: parent?.data.nodeHeight || null,
                             finalPosition,
                             role
                         },

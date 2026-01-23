@@ -335,6 +335,7 @@ function ConversationNodeComponent(props: NodeProps) {
     useEffect(() => {
         const contentHeight = contentRef.current?.offsetHeight || 0;
         const textareaHeight = textareaRef.current?.offsetHeight || 0;
+        const measuredHeight = contentHeight || textareaHeight || 0;
         // #region agent log
         fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
             method: 'POST',
@@ -345,12 +346,30 @@ function ConversationNodeComponent(props: NodeProps) {
                 hypothesisId: 'H2',
                 location: 'ConversationNode.tsx:useEffectHeight',
                 message: 'Measured node heights',
-                data: { id, isEditing, selected, contentHeight, textareaHeight },
+                data: { id, isEditing, selected, contentHeight, textareaHeight, measuredHeight, storedHeight: nodeData.nodeHeight || null },
                 timestamp: Date.now()
             })
         }).catch(() => { });
         // #endregion
-    }, [id, isEditing, selected, nodeData.content]);
+        if (measuredHeight > 0 && measuredHeight !== nodeData.nodeHeight) {
+            updateNode(id, { nodeHeight: measuredHeight });
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: 'debug-session',
+                    runId: 'pre-fix',
+                    hypothesisId: 'H4',
+                    location: 'ConversationNode.tsx:useEffectHeight',
+                    message: 'Updated nodeHeight in store',
+                    data: { id, measuredHeight },
+                    timestamp: Date.now()
+                })
+            }).catch(() => { });
+            // #endregion
+        }
+    }, [id, isEditing, selected, nodeData.content, nodeData.nodeHeight, updateNode]);
 
     useEffect(() => {
         // #region agent log
