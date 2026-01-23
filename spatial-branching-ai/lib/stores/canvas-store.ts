@@ -41,6 +41,7 @@ export interface ConversationNodeData extends Record<string, unknown> {
     authorName?: string;
     authorColor?: string;
     hasChildren?: boolean;
+    isNew?: boolean;
 }
 
 export const USER_COLORS = [
@@ -128,7 +129,7 @@ interface CanvasState {
 
     // Branching
     createRootNode: (position: XYPosition, content?: string) => string;
-    createChildNode: (parentId: string, position: XYPosition, branchContext?: string) => string;
+    createChildNode: (parentId: string, position?: XYPosition, branchContext?: string) => string;
 
     // Utilities
     getAncestorNodes: (nodeId: string) => ConversationNode[];
@@ -309,43 +310,60 @@ export const useCanvasStore = create<CanvasState>()(
                     state.nodes.push(newNode);
                 });
 
+                // #region agent log
+                fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: 'debug-session',
+                        runId: 'pre-fix',
+                        hypothesisId: 'H3',
+                        location: 'canvas-store.ts:createRootNode',
+                        message: 'Created root node',
+                        data: {
+                            id,
+                            position,
+                            authorName: newNode.data.authorName,
+                            authorColor: newNode.data.authorColor
+                        },
+                        timestamp: Date.now()
+                    })
+                }).catch(() => { });
+                // #endregion
+
                 return id;
             },
 
-            createChildNode: (parentId, position, branchContext) => { // position arg is now optional fallback
+            createChildNode: (parentId, position, branchContext) => { // position arg is optional fallback
                 const id = generateId();
                 const parent = get().nodes.find((n) => n.id === parentId);
                 const role: 'user' | 'assistant' = parent?.data.role === 'user' ? 'assistant' : 'user';
 
-                // SMART PLACEMENT LOGIC
+                // Placement: stack vertically under the parent (same X).
                 let finalPosition = position;
 
-                // Find all existing children of this parent
-                const { edges, nodes } = get();
-                const childEdges = edges.filter(e => e.source === parentId);
-                const childNodes = childEdges
-                    .map(e => nodes.find(n => n.id === e.target))
-                    .filter((n): n is ConversationNode => !!n)
-                    // Sort by X position to find the right-most child
-                    .sort((a, b) => a.position.x - b.position.x);
+                if (!finalPosition && parent) {
+                    const { edges, nodes } = get();
+                    const childEdges = edges.filter(e => e.source === parentId);
+                    const childNodes = childEdges
+                        .map(e => nodes.find(n => n.id === e.target))
+                        .filter((n): n is ConversationNode => !!n)
+                        .sort((a, b) => a.position.y - b.position.y);
 
-                if (childNodes.length > 0) {
-                    const lastChild = childNodes[childNodes.length - 1];
-                    // Place to the right of the last child + padding
-                    // Assuming a standard node width of approx 400px + some gap
-                    finalPosition = {
-                        x: lastChild.position.x + 450,
-                        y: lastChild.position.y // Keep same Y level
-                    };
-                } else if (!finalPosition && parent) {
-                    // First child: Place directly below parent
-                    finalPosition = {
-                        x: parent.position.x,
-                        y: parent.position.y + 300 // Vertical gap
-                    };
+                    if (childNodes.length > 0) {
+                        const lastChild = childNodes[childNodes.length - 1];
+                        finalPosition = {
+                            x: parent.position.x,
+                            y: lastChild.position.y + 180
+                        };
+                    } else {
+                        finalPosition = {
+                            x: parent.position.x,
+                            y: parent.position.y + 180
+                        };
+                    }
                 }
 
-                // Fallback if something fails
                 if (!finalPosition) finalPosition = { x: 0, y: 0 };
 
                 const randomColor = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
@@ -386,6 +404,28 @@ export const useCanvasStore = create<CanvasState>()(
                         animated: true,
                     });
                 });
+
+                // #region agent log
+                fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: 'debug-session',
+                        runId: 'pre-fix',
+                        hypothesisId: 'H4',
+                        location: 'canvas-store.ts:createChildNode',
+                        message: 'Created child node',
+                        data: {
+                            id,
+                            parentId,
+                            parentPos: parent?.position,
+                            finalPosition,
+                            role
+                        },
+                        timestamp: Date.now()
+                    })
+                }).catch(() => { });
+                // #endregion
 
                 return id;
             },

@@ -118,6 +118,7 @@ function Canvas() {
         onConnect,
         createRootNode,
         createChildNode,
+        updateNode,
         selectNode,
         deleteNode,
         clearCanvas,
@@ -139,6 +140,7 @@ function Canvas() {
         onConnect: state.onConnect,
         createRootNode: state.createRootNode,
         createChildNode: state.createChildNode,
+        updateNode: state.updateNode,
         selectNode: state.selectNode,
         deleteNode: state.deleteNode,
         clearCanvas: state.clearCanvas,
@@ -384,18 +386,12 @@ function Canvas() {
         const parentNode = nodes.find((n) => n.id === contextMenu.nodeId);
         if (!parentNode) return;
 
-        // Position child node below and slightly to the right
-        const position = {
-            x: parentNode.position.x + 50,
-            y: parentNode.position.y + 200,
-        };
-
         // Use text selection as branch context if available
         const branchContext = textSelection?.nodeId === contextMenu.nodeId
             ? textSelection.text
             : undefined;
 
-        const childNodeId = createChildNode(contextMenu.nodeId, position, branchContext);
+        const childNodeId = createChildNode(contextMenu.nodeId, undefined, branchContext);
         setContextMenu(null);
         setTextSelection(null);
 
@@ -866,6 +862,13 @@ function Canvas() {
                                     const url = new URL(window.location.href);
                                     url.searchParams.delete('treeId');
                                     window.history.pushState({}, '', url.toString());
+                                    const newPos = screenToFlowPosition({
+                                        x: window.innerWidth / 2,
+                                        y: window.innerHeight / 3,
+                                    });
+                                    const newId = createRootNode(newPos);
+                                    updateNode(newId, { isNew: true });
+                                    selectNode(newId);
                                 }}
                                 title="New Conversation"
                             >

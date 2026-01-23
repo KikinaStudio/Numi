@@ -485,19 +485,19 @@ Do not add any other text before or after.`;
                                     .replace(/[^\w\s-]/g, '')
                                     .trim();
                                 if (!cleaned) return '';
-                                return cleaned.split(/\s+/).slice(0, 4).join(' ');
+                                return cleaned.split(/\s+/).slice(0, 3).join(' ');
                             };
 
                             let newTitle = '';
                             if (apiKeys.openrouter) {
-                                const namingPrompt = `Summarize the assistant's first response in 4 words or less. Strictly 4 words max. No quotes. Context user: "${firstUserMessage.slice(0, 160)}..." Assistant: "${firstAssistantResponse.slice(0, 240)}..."`;
+                                const namingPrompt = `Summarize the first user question and assistant reply in 3 words or less. Strictly 3 words max. No quotes. User: "${firstUserMessage.slice(0, 160)}..." Assistant: "${firstAssistantResponse.slice(0, 240)}..."`;
                                 try {
                                     const nameResponse = await fetch('/api/chat', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
                                             messages: [{ role: 'user', content: namingPrompt }],
-                                            model: defaultModel,
+                                            model: 'google/gemini-2.0-flash-exp:free',
                                             apiKey: apiKeys.openrouter,
                                             provider: 'openrouter',
                                             temperature: 0.3,

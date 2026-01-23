@@ -106,6 +106,7 @@ function ConversationNodeComponent(props: NodeProps) {
 
     const contentRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const suppressClickRef = useRef(false);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -183,28 +184,94 @@ function ConversationNodeComponent(props: NodeProps) {
             });
 
             // Prevent the click handler from deselecting or interfering
+            suppressClickRef.current = true;
             e.stopPropagation();
+            requestAnimationFrame(() => {
+                const selection = window.getSelection();
+                if (selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            });
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: 'debug-session',
+                    runId: 'pre-fix',
+                    hypothesisId: 'H1',
+                    location: 'ConversationNode.tsx:handleMouseUp',
+                    message: 'Selection captured on prompt node',
+                    data: { id, selected, isEditing, textLength: text.length },
+                    timestamp: Date.now()
+                })
+            }).catch(() => { });
+            // #endregion
         }
     }, [id, setTextSelection, setContextMenu]);
 
-
-    // Auto-enter edit mode when selected (User nodes only)
     useEffect(() => {
-        if (selected && isUser && !nodeData.fileUrl) {
-            setIsEditing(true);
+        if (suppressClickRef.current) {
+            const timeout = setTimeout(() => {
+                suppressClickRef.current = false;
+            }, 0);
+            return () => clearTimeout(timeout);
         }
-    }, [selected, isUser, nodeData.fileUrl]);
+    });
+
+    useEffect(() => {
+        if (selected && isUser && nodeData.isNew) {
+            setIsEditing(true);
+            updateNode(id, { isNew: false });
+        }
+    }, [selected, isUser, nodeData.isNew, id, updateNode]);
+
 
     const handleClick = useCallback((e: React.MouseEvent) => {
+        if (suppressClickRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         e.stopPropagation();
         selectNode(id);
-        // setIsEditing handled by effect above
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H2',
+                location: 'ConversationNode.tsx:handleClick',
+                message: 'Node clicked',
+                data: { id, selected, isEditing },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
     }, [id, selectNode]);
 
     const handleDoubleClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         if (isUser) {
             setIsEditing(true);
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: 'debug-session',
+                    runId: 'pre-fix',
+                    hypothesisId: 'H2',
+                    location: 'ConversationNode.tsx:handleDoubleClick',
+                    message: 'Entered editing via double click',
+                    data: { id, selected },
+                    timestamp: Date.now()
+                })
+            }).catch(() => { });
+            // #endregion
         }
     }, [isUser]);
 
@@ -218,7 +285,68 @@ function ConversationNodeComponent(props: NodeProps) {
         // No, effect runs on dependency change.
         setIsEditing(false);
         updateNode(id, { content: e.target.value });
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H2',
+                location: 'ConversationNode.tsx:handleBlur',
+                message: 'Exited editing and saved content',
+                data: { id, contentLength: e.target.value.length },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
     }, [id, updateNode]);
+
+    useEffect(() => {
+        const contentHeight = contentRef.current?.offsetHeight || 0;
+        const textareaHeight = textareaRef.current?.offsetHeight || 0;
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H2',
+                location: 'ConversationNode.tsx:useEffectHeight',
+                message: 'Measured node heights',
+                data: { id, isEditing, selected, contentHeight, textareaHeight },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
+    }, [id, isEditing, selected, nodeData.content]);
+
+    useEffect(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'debug-session',
+                runId: 'pre-fix',
+                hypothesisId: 'H3',
+                location: 'ConversationNode.tsx:useEffectColor',
+                message: 'Computed effective color',
+                data: {
+                    id,
+                    role: nodeData.role,
+                    authorName: nodeData.authorName,
+                    authorColor: nodeData.authorColor,
+                    meName,
+                    meColor,
+                    effectiveColor
+                },
+                timestamp: Date.now()
+            })
+        }).catch(() => { });
+        // #endregion
+    }, [id, nodeData.role, nodeData.authorName, nodeData.authorColor, meName, meColor, effectiveColor]);
 
     const handleKeyDown = useCallback(async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Escape') {
@@ -238,15 +366,14 @@ function ConversationNodeComponent(props: NodeProps) {
 
             const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
             if (parentNode) {
-                const newPos = {
-                    x: parentNode.position.x + 50,
-                    y: parentNode.position.y + 200
-                };
-                const childId = createChildNode(id, newPos);
+                const childId = createChildNode(id);
                 selectNode(childId); // Switch focus to new node
 
-                // Pan to new node (Center logic: x + half_width, y + visual_offset)
-                setCenter(newPos.x + 225, newPos.y + 100, { zoom: 1, duration: 1200 });
+                const childNode = useCanvasStore.getState().nodes.find(n => n.id === childId);
+                if (childNode) {
+                    // Pan to new node (Center logic: x + half_width, y + visual_offset)
+                    setCenter(childNode.position.x + 225, childNode.position.y + 100, { zoom: 1, duration: 1200 });
+                }
 
                 try {
                     await generate(childId);
@@ -273,15 +400,14 @@ function ConversationNodeComponent(props: NodeProps) {
 
         const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
         if (parentNode) {
-            const newPos = {
-                x: parentNode.position.x + 50,
-                y: parentNode.position.y + 200
-            };
-            const childId = createChildNode(id, newPos);
+            const childId = createChildNode(id);
             selectNode(childId);
 
-            // Pan to new node
-            setCenter(newPos.x + 225, newPos.y + 100, { zoom: 1, duration: 1200 });
+            const childNode = useCanvasStore.getState().nodes.find(n => n.id === childId);
+            if (childNode) {
+                // Pan to new node
+                setCenter(childNode.position.x + 225, childNode.position.y + 100, { zoom: 1, duration: 1200 });
+            }
 
             try {
                 await generate(childId);
@@ -296,11 +422,7 @@ function ConversationNodeComponent(props: NodeProps) {
         e.stopPropagation();
         const parentNode = useCanvasStore.getState().nodes.find(n => n.id === id);
         if (parentNode) {
-            const newPos = {
-                x: parentNode.position.x + 50,
-                y: parentNode.position.y + 200
-            };
-            const childId = createChildNode(id, newPos);
+            const childId = createChildNode(id);
             selectNode(childId);
         }
     }, [id, createChildNode, selectNode]);
@@ -613,7 +735,7 @@ function ConversationNodeComponent(props: NodeProps) {
             }
 
             <div className="p-0 relative nodrag cursor-auto">
-                {isEditing || (selected && !isAssistant) ? (
+                {isEditing ? (
                     <textarea
                         ref={(el) => {
                             // @ts-ignore
@@ -639,11 +761,7 @@ function ConversationNodeComponent(props: NodeProps) {
                     <div
                         ref={contentRef}
                         onMouseUp={handleMouseUp}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            selectNode(id);
-                            if (isUser && !nodeData.fileUrl) setIsEditing(true);
-                        }}
+                        onClick={handleClick}
                         onDoubleClick={handleDoubleClick}
                         className={cn(
                             'prose-notion select-text cursor-text px-6 pb-14 min-h-[100px] nopan nodrag nowheel',

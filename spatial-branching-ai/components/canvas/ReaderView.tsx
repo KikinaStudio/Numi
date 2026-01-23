@@ -70,10 +70,7 @@ export const ReaderView = () => {
         if (!lastNode) return;
 
         // 1. Create User Node
-        const userNodeId = createChildNode(lastNode.id, {
-            x: lastNode.position.x + 50,
-            y: lastNode.position.y + 200
-        });
+        const userNodeId = createChildNode(lastNode.id);
 
         // 2. Set Content
         updateNode(userNodeId, { content: replyContent });
