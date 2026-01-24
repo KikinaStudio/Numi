@@ -474,7 +474,7 @@ Do not add any other text before or after.`;
                         // Find the user prompt that triggered this response
                         const context = getConversationContext(nodeId);
                         // Context format: [{role, content}, ...]
-                        // We want to summarize the first user message + first assistant response
+                        // We want to summarize the first assistant response
                         const firstUserMessage = context.find(m => m.role === 'user')?.content || '';
                         const firstAssistantResponse = fullContent;
                         // #region agent log
@@ -497,7 +497,7 @@ Do not add any other text before or after.`;
                         }).catch(() => { });
                         // #endregion
 
-                        if (firstUserMessage) {
+                        if (firstAssistantResponse) {
                             const deriveTitle = (text: string) => {
                                 const cleaned = text
                                     .replace(/[\r\n]+/g, ' ')
@@ -508,21 +508,20 @@ Do not add any other text before or after.`;
                             };
 
                             let newTitle = '';
-                            if (apiKeys.openrouter) {
-                                const namingPrompt = `Summarize the first user question and assistant reply in 3 words or less. Strictly 3 words max. No quotes. User: "${firstUserMessage.slice(0, 160)}..." Assistant: "${firstAssistantResponse.slice(0, 240)}..."`;
-                                try {
-                                    const nameResponse = await fetch('/api/chat', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            messages: [{ role: 'user', content: namingPrompt }],
-                                            model: 'google/gemini-2.0-flash-exp:free',
-                                            apiKey: apiKeys.openrouter,
-                                            provider: 'openrouter',
-                                            temperature: 0.3,
-                                            stream: false,
-                                        }),
-                                    });
+                            const namingPrompt = `Summarize the assistant's first reply in 3 words or less. Strictly 3 words max. No quotes. Assistant: "${firstAssistantResponse.slice(0, 320)}..."`;
+                            try {
+                                const nameResponse = await fetch('/api/chat', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        messages: [{ role: 'user', content: namingPrompt }],
+                                        model: 'google/gemini-2.0-flash-exp:free',
+                                        apiKey: apiKeys.openrouter,
+                                        provider: 'openrouter',
+                                        temperature: 0.3,
+                                        stream: false,
+                                    }),
+                                });
 
                                     // #region agent log
                                     fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
@@ -540,37 +539,35 @@ Do not add any other text before or after.`;
                                     }).catch(() => { });
                                     // #endregion
 
-                                    if (nameResponse.ok) {
-                                        const data = await nameResponse.json();
-                                        // Handle both simplified API response and standard OpenAI format
-                                        const rawTitle = data.content || data.choices?.[0]?.message?.content || '';
-                                        newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
-                                        // #region agent log
-                                        fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({
-                                                sessionId: 'debug-session',
-                                                runId: 'pre-fix',
-                                                hypothesisId: 'H6',
-                                                location: 'useChat.ts:autoNaming:parsed',
-                                                message: 'Auto-naming parsed title',
-                                                data: { titleLength: newTitle.length },
-                                                timestamp: Date.now()
-                                            })
-                                        }).catch(() => { });
-                                        // #endregion
-                                    } else {
-                                        console.warn(`⚠️ Auto-naming failed:`, await nameResponse.text());
-                                    }
-                                } catch (e) {
-                                    console.warn(`⚠️ Auto-naming error:`, e);
+                                if (nameResponse.ok) {
+                                    const data = await nameResponse.json();
+                                    // Handle both simplified API response and standard OpenAI format
+                                    const rawTitle = data.content || data.choices?.[0]?.message?.content || '';
+                                    newTitle = rawTitle.trim().replace(/^["']|["']$/g, '');
+                                    // #region agent log
+                                    fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            sessionId: 'debug-session',
+                                            runId: 'pre-fix',
+                                            hypothesisId: 'H6',
+                                            location: 'useChat.ts:autoNaming:parsed',
+                                            message: 'Auto-naming parsed title',
+                                            data: { titleLength: newTitle.length },
+                                            timestamp: Date.now()
+                                        })
+                                    }).catch(() => { });
+                                    // #endregion
+                                } else {
+                                    console.warn(`⚠️ Auto-naming failed:`, await nameResponse.text());
                                 }
+                            } catch (e) {
+                                console.warn(`⚠️ Auto-naming error:`, e);
                             }
 
                             if (!newTitle) {
-                                const combined = `${firstUserMessage} ${firstAssistantResponse || ''}`.trim();
-                                newTitle = deriveTitle(combined);
+                                newTitle = deriveTitle(firstAssistantResponse);
                                 // #region agent log
                                 fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
                                     method: 'POST',

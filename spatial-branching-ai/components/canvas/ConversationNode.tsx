@@ -207,6 +207,9 @@ function ConversationNodeComponent(props: NodeProps) {
                     }).catch(() => { });
                     // #endregion
                 }
+                queueMicrotask(() => {
+                    suppressClickRef.current = false;
+                });
             });
             // #region agent log
             fetch('http://127.0.0.1:7244/ingest/c1ef9c10-69b8-446a-b9a2-fde49aa9d1a1', {
@@ -225,15 +228,6 @@ function ConversationNodeComponent(props: NodeProps) {
             // #endregion
         }
     }, [id, setTextSelection, setContextMenu]);
-
-    useEffect(() => {
-        if (suppressClickRef.current) {
-            const timeout = setTimeout(() => {
-                suppressClickRef.current = false;
-            }, 0);
-            return () => clearTimeout(timeout);
-        }
-    });
 
     useEffect(() => {
         if (selected && isUser && nodeData.isNew) {
@@ -285,6 +279,10 @@ function ConversationNodeComponent(props: NodeProps) {
 
     const handleDoubleClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim().length > 0) {
+            return;
+        }
         if (isUser) {
             setIsEditing(true);
             // #region agent log

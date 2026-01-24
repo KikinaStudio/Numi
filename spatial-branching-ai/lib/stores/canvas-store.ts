@@ -45,6 +45,18 @@ export interface ConversationNodeData extends Record<string, unknown> {
     nodeHeight?: number;
 }
 
+const estimateNodeHeight = (node?: ConversationNode) => {
+    if (!node) return 180;
+    if (node.data.fileUrl) return 300;
+    const content = `${node.data.content || ''} ${node.data.branchContext || ''}`.trim();
+    if (!content) return 180;
+    const charsPerLine = 40;
+    const lineHeight = 24;
+    const basePadding = 120;
+    const lines = Math.ceil(content.length / charsPerLine);
+    return Math.max(180, basePadding + lines * lineHeight);
+};
+
 export const USER_COLORS = [
     '#A855F7', // Purple-500
     '#3B82F6', // Blue-500
@@ -304,6 +316,7 @@ export const useCanvasStore = create<CanvasState>()(
                         content,
                         authorName: get().me?.name || 'User',
                         authorColor: get().me?.color || randomColor,
+                        nodeHeight: estimateNodeHeight(undefined),
                     },
                 };
 
@@ -343,6 +356,11 @@ export const useCanvasStore = create<CanvasState>()(
                 // Placement: stack vertically under the parent (same X).
                 let finalPosition = position;
 
+                let baseHeight = 0;
+                let gap = 90;
+                let xOffset = 260;
+                let direction = 1;
+
                 if (!finalPosition && parent) {
                     const { edges, nodes } = get();
                     const childEdges = edges.filter(e => e.source === parentId);
@@ -352,20 +370,13 @@ export const useCanvasStore = create<CanvasState>()(
                         .sort((a, b) => a.position.y - b.position.y);
 
                     const baseNode = childNodes.length > 0 ? childNodes[childNodes.length - 1] : parent;
-                    const baseHeight = baseNode.data.nodeHeight || 180;
-                    const gap = 180;
+                    baseHeight = baseNode.data.nodeHeight || estimateNodeHeight(baseNode);
+                    direction = childNodes.length % 2 === 0 ? 1 : -1;
 
-                    if (childNodes.length > 0) {
-                        finalPosition = {
-                            x: parent.position.x,
-                            y: baseNode.position.y + baseHeight + gap
-                        };
-                    } else {
-                        finalPosition = {
-                            x: parent.position.x,
-                            y: baseNode.position.y + baseHeight + gap
-                        };
-                    }
+                    finalPosition = {
+                        x: parent.position.x + (xOffset * direction),
+                        y: baseNode.position.y + baseHeight + gap
+                    };
                 }
 
                 if (!finalPosition) finalPosition = { x: 0, y: 0 };
@@ -424,6 +435,10 @@ export const useCanvasStore = create<CanvasState>()(
                             parentId,
                             parentPos: parent?.position,
                             parentHeight: parent?.data.nodeHeight || null,
+                            baseHeight,
+                            gap,
+                            xOffset,
+                            direction,
                             finalPosition,
                             role
                         },
